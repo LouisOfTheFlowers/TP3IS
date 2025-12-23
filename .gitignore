@@ -1,0 +1,5 @@
+.env
+collisions_raw.csv
+collisions_weather.csv
+__pycache__/
+*.pyc
