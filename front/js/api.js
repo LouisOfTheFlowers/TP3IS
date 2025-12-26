@@ -40,8 +40,9 @@ class APIService {
     return this.fetch("/health");
   }
 
-  async getDashboard() {
-    return this.fetch("/dashboard");
+  async getDashboard(quick = false) {
+    const params = quick ? "?quick=true" : "";
+    return this.fetch(`/dashboard${params}`);
   }
 
   async getStatistics() {

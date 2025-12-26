@@ -16,6 +16,14 @@
           <p class="subtitle">Weather Impact & Accident Correlation Analysis</p>
         </div>
         <div class="header-actions">
+          <a
+            href="admin.html"
+            class="btn-secondary"
+            title="Data Management Console"
+          >
+            <span class="btn-icon">🔧</span>
+            <span class="btn-text">Admin Panel</span>
+          </a>
           <button
             id="load-data-btn"
             class="btn-primary"
@@ -75,6 +83,9 @@
           📋 Contributing Factors
         </button>
         <button class="tab-btn" data-tab="time">⏰ Time Analysis</button>
+        <button class="tab-btn" data-tab="xpath">
+          🔍 Complex Queries (XPath)
+        </button>
       </nav>
 
       <!-- Main Content Area -->
@@ -248,6 +259,102 @@
           <div class="chart-container large">
             <h3>Accidents Over Time</h3>
             <canvas id="time-line-chart"></canvas>
+          </div>
+        </section>
+
+        <!-- XPath Complex Queries Tab -->
+        <section id="xpath-tab" class="tab-content">
+          <div class="section-header">
+            <h2>🔍 Complex XPath Queries</h2>
+            <p>
+              Advanced analysis using XPath queries on hierarchical XML data
+            </p>
+          </div>
+
+          <!-- Query Selection -->
+          <div class="xpath-controls">
+            <button class="xpath-query-btn btn-primary" data-query="highRisk">
+              Query 1: High-Risk Accidents
+            </button>
+            <button class="xpath-query-btn btn-primary" data-query="vulnerable">
+              Query 2: Vulnerable Road Users
+            </button>
+            <button
+              class="xpath-query-btn btn-primary"
+              data-query="multiVehicle"
+            >
+              Query 3: Multi-Vehicle Analysis
+            </button>
+          </div>
+
+          <!-- Query Results Container -->
+          <div id="xpath-results" class="xpath-results hidden">
+            <div class="query-info">
+              <h3 id="xpath-query-title">Query Results</h3>
+              <p id="xpath-query-description"></p>
+              <div class="xpath-code">
+                <strong>XPath Expression:</strong>
+                <code id="xpath-expression"></code>
+              </div>
+            </div>
+
+            <!-- Results Summary Cards -->
+            <div class="summary-cards">
+              <div class="summary-card highlight">
+                <div class="card-icon">📊</div>
+                <div class="card-content">
+                  <span class="card-value" id="xpath-total-results">--</span>
+                  <span class="card-label" id="xpath-total-label">Results</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="card-icon">⚠️</div>
+                <div class="card-content">
+                  <span class="card-value" id="xpath-metric-1">--</span>
+                  <span class="card-label" id="xpath-label-1">Metric 1</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="card-icon">📈</div>
+                <div class="card-content">
+                  <span class="card-value" id="xpath-metric-2">--</span>
+                  <span class="card-label" id="xpath-label-2">Metric 2</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Charts for XPath Results -->
+            <div class="charts-row">
+              <div class="chart-container medium">
+                <h3 id="xpath-chart-1-title">Distribution</h3>
+                <canvas id="xpath-chart-1"></canvas>
+              </div>
+              <div class="chart-container medium">
+                <h3 id="xpath-chart-2-title">Analysis</h3>
+                <canvas id="xpath-chart-2"></canvas>
+              </div>
+            </div>
+
+            <!-- Detailed Results Table -->
+            <div class="data-table-container">
+              <h3>Detailed Results</h3>
+              <table class="data-table">
+                <thead id="xpath-table-head">
+                  <tr></tr>
+                </thead>
+                <tbody id="xpath-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- No Results Message -->
+          <div id="xpath-no-results" class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <h3>Select a Query to Begin</h3>
+            <p>
+              Choose one of the complex XPath queries above to analyze the
+              collision data
+            </p>
           </div>
         </section>
       </main>

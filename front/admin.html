@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Management - NYC Collision Analytics</title>
+    <link rel="stylesheet" href="styles/main.css" />
+    <link rel="stylesheet" href="styles/admin.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <h1>🔧 Data Management Console</h1>
+          <p class="subtitle">Control data pipeline operations</p>
+        </div>
+        <div class="header-actions">
+          <a href="index.html" class="btn-secondary">
+            <span class="btn-icon">📊</span>
+            <span class="btn-text">View Dashboard</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Pipeline Overview -->
+      <section class="pipeline-overview">
+        <h2>Data Pipeline Status</h2>
+        <div class="pipeline-steps">
+          <div class="pipeline-step" id="step-scrape">
+            <div class="step-icon">📥</div>
+            <div class="step-content">
+              <h3>1. Scrape Data</h3>
+              <p class="step-status">Ready</p>
+            </div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step" id="step-enrich">
+            <div class="step-icon">🌦️</div>
+            <div class="step-content">
+              <h3>2. Enrich Weather</h3>
+              <p class="step-status">Ready</p>
+            </div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step" id="step-upload">
+            <div class="step-icon">☁️</div>
+            <div class="step-content">
+              <h3>3. Upload to Storage</h3>
+              <p class="step-status">Ready</p>
+            </div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step" id="step-load">
+            <div class="step-icon">💾</div>
+            <div class="step-content">
+              <h3>4. Load to Database</h3>
+              <p class="step-status">Ready</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Control Panels -->
+      <div class="control-panels">
+        <!-- Panel 1: Scrape Collision Data -->
+        <section class="control-panel">
+          <div class="panel-header">
+            <h2>📥 Step 1: Scrape Collision Data</h2>
+            <span class="panel-badge" id="scrape-badge">Ready</span>
+          </div>
+          <div class="panel-content">
+            <p class="panel-description">
+              Fetch collision data from NYC Open Data API
+            </p>
+            <div class="form-group">
+              <label for="record-count">Number of Records:</label>
+              <input
+                type="number"
+                id="record-count"
+                min="100"
+                max="100000"
+                value="1000"
+                step="100"
+              />
+              <small>Enter between 100 and 100,000 records</small>
+            </div>
+            <button class="action-btn btn-primary" id="btn-scrape">
+              <span class="btn-icon">▶️</span>
+              <span class="btn-text">Start Scraping</span>
+            </button>
+          </div>
+          <div class="panel-output" id="scrape-output">
+            <div class="output-header">
+              <strong>Output Log:</strong>
+              <button class="clear-btn" data-target="scrape-output">
+                Clear
+              </button>
+            </div>
+            <div class="output-content" id="scrape-output-content">
+              <p class="output-placeholder">
+                No output yet. Click "Start Scraping" to begin.
+              </p>
+            </div>
+          </div>
+          <div class="panel-stats" id="scrape-stats" style="display: none">
+            <div class="stat-item">
+              <span class="stat-label">Records Fetched:</span>
+              <span class="stat-value" id="scrape-records">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Status:</span>
+              <span class="stat-value" id="scrape-status">Pending</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Duration:</span>
+              <span class="stat-value" id="scrape-duration">--</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Panel 2: Enrich with Weather -->
+        <section class="control-panel">
+          <div class="panel-header">
+            <h2>🌦️ Step 2: Enrich with Weather Data</h2>
+            <span class="panel-badge" id="enrich-badge">Ready</span>
+          </div>
+          <div class="panel-content">
+            <p class="panel-description">
+              Add weather conditions to collision records using WeatherAPI
+            </p>
+            <div class="form-group">
+              <label>Input File:</label>
+              <input
+                type="text"
+                id="enrich-input-file"
+                value="collisions_raw.csv"
+                readonly
+              />
+              <small>Source: Output from Step 1</small>
+            </div>
+            <button class="action-btn btn-primary" id="btn-enrich" disabled>
+              <span class="btn-icon">▶️</span>
+              <span class="btn-text">Start Enrichment</span>
+            </button>
+          </div>
+          <div class="panel-output" id="enrich-output">
+            <div class="output-header">
+              <strong>Output Log:</strong>
+              <button class="clear-btn" data-target="enrich-output">
+                Clear
+              </button>
+            </div>
+            <div class="output-content" id="enrich-output-content">
+              <p class="output-placeholder">
+                Complete Step 1 first to enable weather enrichment.
+              </p>
+            </div>
+          </div>
+          <div class="panel-stats" id="enrich-stats" style="display: none">
+            <div class="stat-item">
+              <span class="stat-label">Records Processed:</span>
+              <span class="stat-value" id="enrich-processed">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Weather Data Added:</span>
+              <span class="stat-value" id="enrich-success">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Success Rate:</span>
+              <span class="stat-value" id="enrich-rate">--%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Panel 3: Upload to Supabase Storage -->
+        <section class="control-panel">
+          <div class="panel-header">
+            <h2>☁️ Step 3: Upload to Supabase Storage</h2>
+            <span class="panel-badge" id="upload-badge">Ready</span>
+          </div>
+          <div class="panel-content">
+            <p class="panel-description">
+              Upload CSV files to Supabase Storage bucket
+            </p>
+            <div class="form-group">
+              <label>Files to Upload:</label>
+              <div class="checkbox-group">
+                <label>
+                  <input type="checkbox" id="upload-raw" checked disabled />
+                  collisions_raw.csv
+                </label>
+                <label>
+                  <input type="checkbox" id="upload-weather" checked disabled />
+                  collisions_weather.csv
+                </label>
+              </div>
+            </div>
+            <button class="action-btn btn-primary" id="btn-upload" disabled>
+              <span class="btn-icon">▶️</span>
+              <span class="btn-text">Start Upload</span>
+            </button>
+          </div>
+          <div class="panel-output" id="upload-output">
+            <div class="output-header">
+              <strong>Output Log:</strong>
+              <button class="clear-btn" data-target="upload-output">
+                Clear
+              </button>
+            </div>
+            <div class="output-content" id="upload-output-content">
+              <p class="output-placeholder">
+                Complete Steps 1 & 2 first to enable upload.
+              </p>
+            </div>
+          </div>
+          <div class="panel-stats" id="upload-stats" style="display: none">
+            <div class="stat-item">
+              <span class="stat-label">Files Uploaded:</span>
+              <span class="stat-value" id="upload-files">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Total Size:</span>
+              <span class="stat-value" id="upload-size">0 MB</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Bucket:</span>
+              <span class="stat-value">dataBucket</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Panel 4: Load to Database -->
+        <section class="control-panel">
+          <div class="panel-header">
+            <h2>💾 Step 4: Load to Database</h2>
+            <span class="panel-badge" id="load-badge">Ready</span>
+          </div>
+          <div class="panel-content">
+            <p class="panel-description">
+              Convert CSV to XML and load into PostgreSQL database
+            </p>
+            <div class="form-group">
+              <label for="batch-size">Batch Size:</label>
+              <input
+                type="number"
+                id="batch-size"
+                min="10"
+                max="1000"
+                value="100"
+                step="10"
+              />
+              <small>Records per batch (10-1000)</small>
+            </div>
+            <button class="action-btn btn-primary" id="btn-load" disabled>
+              <span class="btn-icon">▶️</span>
+              <span class="btn-text">Start Loading</span>
+            </button>
+          </div>
+          <div class="panel-output" id="load-output">
+            <div class="output-header">
+              <strong>Output Log:</strong>
+              <button class="clear-btn" data-target="load-output">Clear</button>
+            </div>
+            <div class="output-content" id="load-output-content">
+              <p class="output-placeholder">
+                Complete Step 3 first to enable database loading.
+              </p>
+            </div>
+          </div>
+          <div class="panel-stats" id="load-stats" style="display: none">
+            <div class="stat-item">
+              <span class="stat-label">Batches Loaded:</span>
+              <span class="stat-value" id="load-batches">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Total Records:</span>
+              <span class="stat-value" id="load-records">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Success Rate:</span>
+              <span class="stat-value" id="load-success-rate">100%</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Quick Actions -->
+      <section class="quick-actions">
+        <h2>⚡ Quick Actions</h2>
+        <div class="action-buttons">
+          <button class="quick-btn" id="btn-run-all">
+            <span class="btn-icon">🚀</span>
+            <span>Run Full Pipeline</span>
+          </button>
+          <button class="quick-btn" id="btn-check-status">
+            <span class="btn-icon">🔍</span>
+            <span>Check All Status</span>
+          </button>
+          <button class="quick-btn" id="btn-clear-logs">
+            <span class="btn-icon">🧹</span>
+            <span>Clear All Logs</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>Data Management Console | NYC Collision Analytics Platform</p>
+      </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+      <div class="loader"></div>
+      <p id="loading-message">Processing...</p>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>⚠️ Error</h3>
+        <p id="error-message"></p>
+        <button id="close-error" class="btn-primary">Close</button>
+      </div>
+    </div>
+
+    <script type="module" src="js/admin.js"></script>
+  </body>
+</html>

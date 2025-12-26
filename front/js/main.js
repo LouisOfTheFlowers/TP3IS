@@ -3,6 +3,7 @@
  */
 
 import { apiService } from "./api.js";
+import { xpathQueryService } from "./xpath-queries.js";
 import {
   createBarChart,
   createLineChart,
@@ -53,6 +54,25 @@ const elements = {
   lowPeriod: document.getElementById("low-period"),
   lowAccidents: document.getElementById("low-accidents"),
   avgAccidents: document.getElementById("avg-accidents"),
+
+  // XPath tab
+  xpathQueryButtons: document.querySelectorAll(".xpath-query-btn"),
+  xpathResults: document.getElementById("xpath-results"),
+  xpathNoResults: document.getElementById("xpath-no-results"),
+  xpathQueryTitle: document.getElementById("xpath-query-title"),
+  xpathQueryDescription: document.getElementById("xpath-query-description"),
+  xpathExpression: document.getElementById("xpath-expression"),
+  xpathTotalResults: document.getElementById("xpath-total-results"),
+  xpathMetric1: document.getElementById("xpath-metric-1"),
+  xpathLabel1: document.getElementById("xpath-label-1"),
+  xpathMetric2: document.getElementById("xpath-metric-2"),
+  xpathLabel2: document.getElementById("xpath-label-2"),
+  xpathTableHead: document.getElementById("xpath-table-head"),
+  xpathTableBody: document.getElementById("xpath-table-body"),
+  xpathChart1: document.getElementById("xpath-chart-1"),
+  xpathChart2: document.getElementById("xpath-chart-2"),
+  xpathChart1Title: document.getElementById("xpath-chart-1-title"),
+  xpathChart2Title: document.getElementById("xpath-chart-2-title"),
 };
 
 // Application State
@@ -127,6 +147,11 @@ function setupEventListeners() {
   elements.closeError?.addEventListener("click", () => {
     elements.errorModal.classList.add("hidden");
   });
+
+  // XPath query buttons
+  elements.xpathQueryButtons?.forEach((btn) => {
+    btn.addEventListener("click", () => handleXPathQuery(btn.dataset.query));
+  });
 }
 
 // ============================================================
@@ -135,11 +160,24 @@ function setupEventListeners() {
 
 async function loadDashboardData() {
   try {
-    // Load main dashboard data
-    state.dashboardData = await apiService.getDashboard();
+    // Step 1: Load quick cached data first (instant)
+    console.log("📊 Loading cached dashboard data...");
+    const cachedData = await apiService.getDashboard(true);
 
-    // Update summary cards
-    updateSummaryCards(state.dashboardData.summary);
+    if (cachedData.success) {
+      // Update with cached data immediately
+      state.dashboardData = cachedData;
+      updateSummaryCards(cachedData.data || cachedData.summary);
+      console.log("✅ Cached data loaded");
+    }
+
+    // Step 2: Load full data in background
+    console.log("🔄 Loading full dashboard data...");
+    state.dashboardData = await apiService.getDashboard(false);
+
+    // Update with real data
+    updateSummaryCards(state.dashboardData.data || state.dashboardData.summary);
+    console.log("✅ Full data loaded");
 
     // Load correlation data (main feature)
     await loadCorrelationData();
@@ -524,6 +562,314 @@ function showSuccess(message) {
     notification.style.animation = "slideOut 0.3s ease";
     setTimeout(() => notification.remove(), 300);
   }, 3000);
+}
+
+// ============================================================
+// XPATH QUERIES
+// ============================================================
+
+let xpathCharts = { chart1: null, chart2: null };
+
+async function handleXPathQuery(queryType) {
+  showLoading(true);
+  elements.xpathNoResults?.classList.add("hidden");
+  elements.xpathResults?.classList.add("hidden");
+
+  try {
+    let results, queryInfo;
+
+    switch (queryType) {
+      case "highRisk":
+        results = await xpathQueryService.getHighRiskAccidents();
+        queryInfo = {
+          title: "Query 1: High-Risk Accidents in Adverse Weather",
+          description:
+            "Accidents with 3+ injuries OR any fatalities during Rain/Snow conditions",
+          xpath: `//collision[weather/condition[contains(text(), 'Rain') or contains(text(), 'Snow')] and (casualties/personsInjured >= 3 or casualties/personsKilled > 0)]`,
+        };
+        renderHighRiskResults(results, queryInfo);
+        break;
+
+      case "vulnerable":
+        results = await xpathQueryService.getVulnerableUsersInAdverseWeather();
+        queryInfo = {
+          title: "Query 2: Vulnerable Road Users in Adverse Weather",
+          description:
+            "Pedestrians and cyclists injured/killed during non-Clear weather conditions",
+          xpath: `//collision[weather/condition[not(contains(text(), 'Clear'))] and (casualties/pedestriansInjured > 0 or casualties/pedestriansKilled > 0 or casualties/cyclistsInjured > 0 or casualties/cyclistsKilled > 0)]`,
+        };
+        renderVulnerableUsersResults(results, queryInfo);
+        break;
+
+      case "multiVehicle":
+        results = await xpathQueryService.getMultiVehicleFactorAnalysis();
+        queryInfo = {
+          title: "Query 3: Multi-Vehicle Accidents with Key Factors",
+          description:
+            "Accidents involving 3+ vehicles with Distraction, Speed, or Following Too Closely factors",
+          xpath: `//collision[count(vehicles/vehicle[text() != '']) >= 3 and contributingFactors/factor[contains(text(), 'Distraction') or contains(text(), 'Speed') or contains(text(), 'Following')]]`,
+        };
+        renderMultiVehicleResults(results, queryInfo);
+        break;
+
+      default:
+        throw new Error("Unknown query type");
+    }
+
+    elements.xpathResults?.classList.remove("hidden");
+  } catch (error) {
+    console.error("XPath query error:", error);
+    showError(`Failed to execute XPath query: ${error.message}`);
+  } finally {
+    showLoading(false);
+  }
+}
+
+function renderHighRiskResults(results, queryInfo) {
+  // Update header
+  elements.xpathQueryTitle.textContent = queryInfo.title;
+  elements.xpathQueryDescription.textContent = queryInfo.description;
+  elements.xpathExpression.textContent = queryInfo.xpath;
+
+  // Update summary cards
+  elements.xpathTotalResults.textContent =
+    results.totalHighRiskAccidents.toLocaleString();
+  document.getElementById("xpath-total-label").textContent =
+    "High-Risk Accidents";
+
+  const totalInjured = Object.values(results.weatherBreakdown).reduce(
+    (sum, w) => sum + w.totalInjured,
+    0
+  );
+  const totalKilled = Object.values(results.weatherBreakdown).reduce(
+    (sum, w) => sum + w.totalKilled,
+    0
+  );
+
+  elements.xpathMetric1.textContent = totalInjured.toLocaleString();
+  elements.xpathLabel1.textContent = "Total Injured";
+  elements.xpathMetric2.textContent = totalKilled.toLocaleString();
+  elements.xpathLabel2.textContent = "Total Killed";
+
+  // Chart 1: Weather breakdown
+  const weatherLabels = Object.keys(results.weatherBreakdown);
+  const weatherCounts = Object.values(results.weatherBreakdown).map(
+    (w) => w.count
+  );
+
+  destroyXPathCharts();
+  elements.xpathChart1Title.textContent = "Accidents by Weather Condition";
+  xpathCharts.chart1 = createPieChart(
+    elements.xpathChart1,
+    weatherLabels,
+    weatherCounts,
+    "Accidents"
+  );
+
+  // Chart 2: Casualties by weather
+  const casualtyData = Object.entries(results.weatherBreakdown).map(
+    ([weather, stats]) => ({
+      weather,
+      injured: stats.totalInjured,
+      killed: stats.totalKilled,
+    })
+  );
+
+  elements.xpathChart2Title.textContent = "Casualties by Weather";
+  xpathCharts.chart2 = createBarChart(
+    elements.xpathChart2,
+    casualtyData.map((d) => d.weather),
+    [
+      {
+        label: "Injured",
+        data: casualtyData.map((d) => d.injured),
+        backgroundColor: "rgba(255, 159, 64, 0.6)",
+      },
+      {
+        label: "Killed",
+        data: casualtyData.map((d) => d.killed),
+        backgroundColor: "rgba(255, 99, 132, 0.6)",
+      },
+    ]
+  );
+
+  // Table
+  renderXPathTable(
+    ["Weather", "Accidents", "Injured", "Killed", "Avg Casualties"],
+    Object.entries(results.weatherBreakdown).map(([weather, stats]) => [
+      weather,
+      stats.count,
+      stats.totalInjured,
+      stats.totalKilled,
+      ((stats.totalInjured + stats.totalKilled) / stats.count).toFixed(2),
+    ])
+  );
+}
+
+function renderVulnerableUsersResults(results, queryInfo) {
+  // Update header
+  elements.xpathQueryTitle.textContent = queryInfo.title;
+  elements.xpathQueryDescription.textContent = queryInfo.description;
+  elements.xpathExpression.textContent = queryInfo.xpath;
+
+  // Update summary cards
+  const totalAccidents = Object.values(results.weatherImpact).reduce(
+    (sum, w) => sum + w.accidents,
+    0
+  );
+  elements.xpathTotalResults.textContent = totalAccidents.toLocaleString();
+  document.getElementById("xpath-total-label").textContent = "Accidents";
+
+  elements.xpathMetric1.textContent = results.totalPedestrians.toLocaleString();
+  elements.xpathLabel1.textContent = "Pedestrian Casualties";
+  elements.xpathMetric2.textContent = results.totalCyclists.toLocaleString();
+  elements.xpathLabel2.textContent = "Cyclist Casualties";
+
+  // Chart 1: Distribution by user type and weather
+  const topWeathers = results.mostDangerousWeather.slice(0, 5);
+  const weatherLabels = topWeathers.map(([weather]) => weather);
+
+  destroyXPathCharts();
+  elements.xpathChart1Title.textContent =
+    "Top 5 Most Dangerous Weather Conditions";
+  xpathCharts.chart1 = createBarChart(elements.xpathChart1, weatherLabels, [
+    {
+      label: "Pedestrians",
+      data: topWeathers.map(
+        ([, stats]) => stats.pedestrians.injured + stats.pedestrians.killed
+      ),
+      backgroundColor: "rgba(75, 192, 192, 0.6)",
+    },
+    {
+      label: "Cyclists",
+      data: topWeathers.map(
+        ([, stats]) => stats.cyclists.injured + stats.cyclists.killed
+      ),
+      backgroundColor: "rgba(153, 102, 255, 0.6)",
+    },
+  ]);
+
+  // Chart 2: Pie chart of total vulnerable users
+  elements.xpathChart2Title.textContent = "Vulnerable User Distribution";
+  xpathCharts.chart2 = createPieChart(
+    elements.xpathChart2,
+    ["Pedestrians", "Cyclists"],
+    [results.totalPedestrians, results.totalCyclists],
+    "Casualties"
+  );
+
+  // Table
+  renderXPathTable(
+    ["Weather", "Accidents", "Pedestrians", "Cyclists", "Total Casualties"],
+    Object.entries(results.weatherImpact).map(([weather, stats]) => [
+      weather,
+      stats.accidents,
+      stats.pedestrians.injured + stats.pedestrians.killed,
+      stats.cyclists.injured + stats.cyclists.killed,
+      stats.pedestrians.injured +
+        stats.pedestrians.killed +
+        stats.cyclists.injured +
+        stats.cyclists.killed,
+    ])
+  );
+}
+
+function renderMultiVehicleResults(results, queryInfo) {
+  // Update header
+  elements.xpathQueryTitle.textContent = queryInfo.title;
+  elements.xpathQueryDescription.textContent = queryInfo.description;
+  elements.xpathExpression.textContent = queryInfo.xpath;
+
+  // Update summary cards
+  elements.xpathTotalResults.textContent =
+    results.totalMultiVehicleAccidents.toLocaleString();
+  document.getElementById("xpath-total-label").textContent =
+    "Multi-Vehicle Accidents";
+
+  elements.xpathMetric1.textContent = results.totalCasualties.toLocaleString();
+  elements.xpathLabel1.textContent = "Total Casualties";
+  elements.xpathMetric2.textContent = results.avgCasualtiesPerAccident;
+  elements.xpathLabel2.textContent = "Avg Casualties/Accident";
+
+  // Chart 1: Top contributing factors
+  const topFactors = results.topFactors.slice(0, 10);
+  destroyXPathCharts();
+  elements.xpathChart1Title.textContent = "Top 10 Contributing Factors";
+  xpathCharts.chart1 = createHorizontalBarChart(
+    elements.xpathChart1,
+    topFactors.map((f) => f.factor),
+    topFactors.map((f) => f.count),
+    "Accidents"
+  );
+
+  // Chart 2: Casualties by factor
+  elements.xpathChart2Title.textContent = "Casualties by Contributing Factor";
+  xpathCharts.chart2 = createBarChart(
+    elements.xpathChart2,
+    topFactors.slice(0, 8).map((f) => f.factor.substring(0, 20) + "..."),
+    [
+      {
+        label: "Casualties",
+        data: topFactors.slice(0, 8).map((f) => f.casualties),
+        backgroundColor: "rgba(255, 99, 132, 0.6)",
+      },
+    ]
+  );
+
+  // Table
+  renderXPathTable(
+    [
+      "Contributing Factor",
+      "Accidents",
+      "Casualties",
+      "Avg Vehicles",
+      "Risk Score",
+    ],
+    topFactors.map((f) => [
+      f.factor,
+      f.count,
+      f.casualties,
+      f.avgVehicles,
+      ((f.casualties / f.count) * parseFloat(f.avgVehicles)).toFixed(2),
+    ])
+  );
+}
+
+function renderXPathTable(headers, rows) {
+  // Clear existing content
+  elements.xpathTableHead.innerHTML = "";
+  elements.xpathTableBody.innerHTML = "";
+
+  // Add headers
+  const headerRow = document.createElement("tr");
+  headers.forEach((header) => {
+    const th = document.createElement("th");
+    th.textContent = header;
+    headerRow.appendChild(th);
+  });
+  elements.xpathTableHead.appendChild(headerRow);
+
+  // Add rows
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    row.forEach((cell) => {
+      const td = document.createElement("td");
+      td.textContent = cell;
+      tr.appendChild(td);
+    });
+    elements.xpathTableBody.appendChild(tr);
+  });
+}
+
+function destroyXPathCharts() {
+  if (xpathCharts.chart1) {
+    xpathCharts.chart1.destroy();
+    xpathCharts.chart1 = null;
+  }
+  if (xpathCharts.chart2) {
+    xpathCharts.chart2.destroy();
+    xpathCharts.chart2 = null;
+  }
 }
 
 // ============================================================

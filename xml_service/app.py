@@ -1,14 +1,11 @@
 """
 XML Service - Main Flask Application
-GraphQL API for XML document management and XPath queries
+REST API for XML document management and XPath queries
+Protocol C: RPC/REST/gRPC
 """
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 from flask_cors import CORS
-from ariadne import make_executable_schema, graphql_sync
-from ariadne.explorer import ExplorerGraphiQL
-
-from graphql_schema.schema import type_defs
-from graphql_schema.resolvers import resolvers
+from rest_routes import rest_api
 from database.init_db import init_database
 from config.settings import Config
 
@@ -25,27 +22,30 @@ def create_app():
     
     # Enable CORS for BI Service and Frontend
     CORS(app, resources={
-        r"/graphql": {"origins": "*"},
-        r"/api/*": {"origins": "*"}
+        r"/api/*": {"origins": "*"},
+        r"/health": {"origins": "*"}
     })
     
-    # Create executable GraphQL schema
-    schema = make_executable_schema(type_defs, *resolvers)
-    
-    # GraphiQL Explorer for testing
-    explorer_html = ExplorerGraphiQL().html(None)
+    # Register REST API Blueprint
+    app.register_blueprint(rest_api)
     
     @app.route("/")
     def index():
         """Root endpoint with service info"""
         return jsonify({
             "service": "XML Service",
-            "version": "1.0.0",
+            "version": "2.0.0",
+            "protocol": "REST (Protocol C)",
             "endpoints": {
-                "graphql": "/graphql",
-                "graphiql": "/graphql (GET for explorer)",
                 "health": "/health",
-                "webhook": "/api/webhook"
+                "statistics": "/api/statistics",
+                "weather_correlation": "/api/weather-correlation",
+                "casualties_by_weather": "/api/casualties-by-weather",
+                "contributing_factors": "/api/contributing-factors",
+                "time_period": "/api/time-period",
+                "vehicle_types": "/api/vehicle-types",
+                "xpath_query": "/api/xpath/query (POST)",
+                "webhook": "/api/webhook (POST)"
             }
         })
     
@@ -54,67 +54,9 @@ def create_app():
         """Health check endpoint"""
         return jsonify({
             "status": "healthy",
-            "service": "xml-service"
+            "service": "xml-service",
+            "protocol": "REST"
         })
-    
-    @app.route("/graphql", methods=["GET"])
-    def graphql_explorer():
-        """GraphiQL Explorer interface"""
-        return explorer_html, 200
-    
-    @app.route("/graphql", methods=["POST"])
-    def graphql_server():
-        """GraphQL endpoint"""
-        data = request.get_json()
-        
-        success, result = graphql_sync(
-            schema,
-            data,
-            context_value={"request": request},
-            debug=app.debug
-        )
-        
-        status_code = 200 if success else 400
-        return jsonify(result), status_code
-    
-    @app.route("/api/webhook", methods=["POST"])
-    def webhook_receiver():
-        """
-        Webhook endpoint to receive notifications from Data Processor
-        This receives CSV data and triggers XML creation
-        """
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-        
-        # If receiving collision data, process it
-        if "collisions" in data:
-            from services.collision_service import collision_service
-            result = collision_service.process_and_store_collisions(data["collisions"])
-            return jsonify(result)
-        
-        # If receiving status update
-        if "status" in data:
-            return jsonify({"received": True, "data": data})
-        
-        return jsonify({"error": "Invalid data format"}), 400
-    
-    @app.route("/api/import-csv", methods=["POST"])
-    def import_csv():
-        """
-        REST endpoint to import CSV data directly
-        Alternative to GraphQL mutation for Data Processor
-        """
-        from services.collision_service import collision_service
-        
-        data = request.get_json()
-        
-        if not data or "collisions" not in data:
-            return jsonify({"error": "No collision data provided"}), 400
-        
-        result = collision_service.process_and_store_collisions(data["collisions"])
-        return jsonify(result)
     
     return app
 
@@ -130,8 +72,9 @@ def main():
     port = Config.XML_SERVICE_PORT
     
     print(f"🚀 XML Service starting on port {port}")
-    print(f"📊 GraphQL endpoint: http://localhost:{port}/graphql")
-    print(f"🔍 GraphiQL explorer: http://localhost:{port}/graphql")
+    print(f"� Protocol: REST (Protocol C)")
+    print(f"📊 API endpoints: http://localhost:{port}/api/")
+    print(f"❤️  Health check: http://localhost:{port}/health")
     
     app.run(
         host="0.0.0.0",

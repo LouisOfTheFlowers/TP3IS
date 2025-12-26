@@ -4,6 +4,7 @@ GraphQL Resolvers for XML Service
 from ariadne import QueryType, MutationType
 from services.collision_service import collision_service
 from services.xpath_query_service import xpath_query_service
+from services.analytics_cache import analytics_cache
 
 # Create resolver instances
 query = QueryType()
@@ -74,8 +75,8 @@ def resolve_execute_xpath(_, info, xpath, documentId=None):
 
 @query.field("casualtiesByWeather")
 def resolve_casualties_by_weather(_, info, weatherFilter=None):
-    """Get casualties grouped by weather condition"""
-    results = xpath_query_service.get_casualties_by_weather(weatherFilter)
+    """Get casualties grouped by weather condition (OPTIMIZED)"""
+    results = analytics_cache.get_casualties_by_weather_fast(weatherFilter)
     return [{
         "weatherCondition": r["weather_condition"],
         "totalAccidents": r["total_accidents"],
@@ -87,8 +88,8 @@ def resolve_casualties_by_weather(_, info, weatherFilter=None):
 
 @query.field("accidentsByContributingFactor")
 def resolve_accidents_by_contributing_factor(_, info, limit=20):
-    """Get accidents grouped by contributing factor"""
-    results = xpath_query_service.get_accidents_by_contributing_factor(limit)
+    """Get accidents grouped by contributing factor (OPTIMIZED)"""
+    results = analytics_cache.get_contributing_factors_fast(limit)
     return [{
         "contributingFactor": r["contributing_factor"],
         "accidentCount": r["accident_count"],
@@ -98,14 +99,14 @@ def resolve_accidents_by_contributing_factor(_, info, limit=20):
 
 @query.field("accidentsByTimePeriod")
 def resolve_accidents_by_time_period(_, info, startDate=None, endDate=None, groupBy="hour"):
-    """Get accidents grouped by time period"""
-    results = xpath_query_service.get_accidents_by_time_period(startDate, endDate, groupBy)
+    """Get accidents grouped by time period (OPTIMIZED)"""
+    results = analytics_cache.get_time_period_stats_fast(startDate, endDate, groupBy)
     
     # Map the dynamic field name to 'period'
     period_key = groupBy if groupBy in ["hour", "date", "month"] else "hour"
     
     return [{
-        "period": str(r.get(period_key, r.get("hour", r.get("date", r.get("month", ""))))),
+        "period": str(r.get("period", "")),
         "totalAccidents": r["total_accidents"],
         "totalInjured": r["total_injured"],
         "totalKilled": r["total_killed"]
@@ -114,8 +115,8 @@ def resolve_accidents_by_time_period(_, info, startDate=None, endDate=None, grou
 
 @query.field("accidentsByVehicleType")
 def resolve_accidents_by_vehicle_type(_, info, limit=15):
-    """Get accidents by vehicle type"""
-    results = xpath_query_service.get_accidents_by_vehicle_type(limit)
+    """Get accidents by vehicle type (OPTIMIZED)"""
+    results = analytics_cache.get_vehicle_types_fast(limit)
     return [{
         "vehicleType": r["vehicle_type"],
         "involvementCount": r["involvement_count"],
@@ -125,8 +126,8 @@ def resolve_accidents_by_vehicle_type(_, info, limit=15):
 
 @query.field("weatherAccidentCorrelation")
 def resolve_weather_accident_correlation(_, info):
-    """Get weather-accident correlation data"""
-    results = xpath_query_service.get_weather_accident_correlation()
+    """Get weather-accident correlation data (OPTIMIZED)"""
+    results = analytics_cache.get_weather_correlation_fast()
     return [{
         "weatherCondition": r["weather_condition"],
         "totalAccidents": r["total_accidents"],
@@ -142,13 +143,13 @@ def resolve_weather_accident_correlation(_, info):
 
 @query.field("summaryStatistics")
 def resolve_summary_statistics(_, info):
-    """Get summary statistics"""
-    stats = xpath_query_service.get_summary_statistics()
+    """Get summary statistics (OPTIMIZED)"""
+    stats = analytics_cache.get_summary_statistics()
     return {
-        "totalCollisions": stats["total_collisions"] or 0,
-        "totalInjured": stats["total_injured"] or 0,
-        "totalKilled": stats["total_killed"] or 0,
-        "totalDocuments": stats["total_documents"] or 0
+        "totalCollisions": stats["totalCollisions"] or 0,
+        "totalInjured": stats["totalInjured"] or 0,
+        "totalKilled": stats["totalKilled"] or 0,
+        "totalDocuments": stats["totalDocuments"] or 0
     }
 
 

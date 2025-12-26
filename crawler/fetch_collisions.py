@@ -4,7 +4,7 @@ import pandas as pd
 URL = "https://data.cityofnewyork.us/resource/h9gi-nx95.json"
 
 PARAMS = {
-    "$limit": 5000,   # podes aumentar
+    "$limit": 100000,   
     "$order": "crash_date DESC"
 }
 

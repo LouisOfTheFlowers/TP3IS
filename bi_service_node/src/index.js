@@ -1,7 +1,7 @@
 /**
  * BI Service - REST API (Node.js/Express)
- * Protocol: REST
- * Consumes: XML Service via GraphQL
+ * Protocol D: REST for Visualization communication
+ * Protocol C: REST for XML Service communication
  */
 
 const express = require("express");
@@ -74,10 +74,11 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log("🚀 BI SERVICE (Node.js) - REST API");
   console.log("=".repeat(60));
   console.log(`   Port: ${PORT}`);
-  console.log(`   Protocol: REST`);
+  console.log(`   Protocol D: REST (to Visualization)`);
+  console.log(`   Protocol C: REST (to XML Service)`);
   console.log(
     `   XML Service: ${
-      process.env.XML_SERVICE_URL || "http://localhost:5000/graphql"
+      process.env.XML_SERVICE_URL || "http://xml-service:5000/api"
     }`
   );
   console.log("=".repeat(60));

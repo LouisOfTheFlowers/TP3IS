@@ -1,10 +1,11 @@
 /**
  * API Routes - REST endpoints for BI Service
+ * Protocol D: REST for Visualization communication
  */
 
 const express = require("express");
 const router = express.Router();
-const { executeQuery, queries } = require("../services/graphqlClient");
+const { restClient } = require("../services/restClient");
 
 // ============================================================
 // GET /api/health - Health check
@@ -22,10 +23,10 @@ router.get("/health", (req, res) => {
 // ============================================================
 router.get("/statistics", async (req, res, next) => {
   try {
-    const data = await executeQuery(queries.summaryStatistics);
+    const data = await restClient.getStatistics();
     res.json({
       success: true,
-      data: data.summaryStatistics,
+      data: data,
     });
   } catch (error) {
     next(error);
@@ -37,24 +38,11 @@ router.get("/statistics", async (req, res, next) => {
 // ============================================================
 router.get("/weather-correlation", async (req, res, next) => {
   try {
-    const data = await executeQuery(queries.weatherCorrelation);
-
-    // Transform data for frontend charts
-    const correlations = data.weatherAccidentCorrelation.map((item) => ({
-      weatherCondition: item.weatherCondition,
-      totalAccidents: item.totalAccidents,
-      totalInjured: item.totalInjured,
-      totalKilled: item.totalKilled,
-      pedestriansInjured: item.pedestriansInjured,
-      cyclistsInjured: item.cyclistsInjured,
-      avgInjuredPerAccident: parseFloat(item.avgInjuredPerAccident) || 0,
-      avgKilledPerAccident: parseFloat(item.avgKilledPerAccident) || 0,
-      fatalityRatePer1000: parseFloat(item.fatalityRatePer1000) || 0,
-    }));
+    const data = await restClient.getWeatherCorrelation();
 
     res.json({
       success: true,
-      data: correlations,
+      data: data,
     });
   } catch (error) {
     next(error);
@@ -67,13 +55,11 @@ router.get("/weather-correlation", async (req, res, next) => {
 router.get("/casualties-by-weather", async (req, res, next) => {
   try {
     const { weather } = req.query;
-    const data = await executeQuery(queries.casualtiesByWeather, {
-      weatherFilter: weather || null,
-    });
+    const data = await restClient.getCasualtiesByWeather(weather || null);
 
     res.json({
       success: true,
-      data: data.casualtiesByWeather,
+      data: data,
     });
   } catch (error) {
     next(error);
@@ -86,11 +72,11 @@ router.get("/casualties-by-weather", async (req, res, next) => {
 router.get("/contributing-factors", async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
-    const data = await executeQuery(queries.contributingFactors, { limit });
+    const data = await restClient.getContributingFactors(limit);
 
     res.json({
       success: true,
-      data: data.accidentsByContributingFactor,
+      data: data,
     });
   } catch (error) {
     next(error);
@@ -104,24 +90,16 @@ router.get("/time-period", async (req, res, next) => {
   try {
     const { startDate, endDate, groupBy = "hour" } = req.query;
 
-    const data = await executeQuery(queries.timePeriodAnalysis, {
-      startDate: startDate || null,
-      endDate: endDate || null,
-      groupBy,
-    });
-
-    // Transform based on groupBy
-    const periods = data.accidentsByTimePeriod.map((item) => ({
-      period: item.period,
-      totalAccidents: item.totalAccidents,
-      totalInjured: item.totalInjured,
-      totalKilled: item.totalKilled,
-    }));
+    const data = await restClient.getTimePeriod(
+      startDate || null,
+      endDate || null,
+      groupBy
+    );
 
     res.json({
       success: true,
       groupBy,
-      data: periods,
+      data: data,
     });
   } catch (error) {
     next(error);
@@ -134,11 +112,11 @@ router.get("/time-period", async (req, res, next) => {
 router.get("/vehicle-types", async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit) || 15;
-    const data = await executeQuery(queries.vehicleTypes, { limit });
+    const data = await restClient.getVehicleTypes(limit);
 
     res.json({
       success: true,
-      data: data.accidentsByVehicleType,
+      data: data,
     });
   } catch (error) {
     next(error);
@@ -150,21 +128,97 @@ router.get("/vehicle-types", async (req, res, next) => {
 // ============================================================
 router.get("/dashboard", async (req, res, next) => {
   try {
-    // Execute all queries in parallel
+    const quick = req.query.quick === "true";
+
+    if (quick) {
+      // Return mock/cached data immediately for initial page load
+      res.json({
+        success: true,
+        cached: true,
+        data: {
+          statistics: {
+            totalCollisions: 100000,
+            totalInjured: 25000,
+            totalKilled: 250,
+            totalDocuments: 1000,
+          },
+          weatherCorrelation: [
+            {
+              weatherCondition: "Clear",
+              totalAccidents: 15000,
+              totalInjured: 3000,
+              totalKilled: 50,
+              pedestriansInjured: 500,
+              cyclistsInjured: 300,
+              avgInjuredPerAccident: 0.2,
+              avgKilledPerAccident: 0.003,
+              fatalityRatePer1000: 3.3,
+            },
+            {
+              weatherCondition: "Rain",
+              totalAccidents: 8000,
+              totalInjured: 2000,
+              totalKilled: 40,
+              pedestriansInjured: 400,
+              cyclistsInjured: 250,
+              avgInjuredPerAccident: 0.25,
+              avgKilledPerAccident: 0.005,
+              fatalityRatePer1000: 5.0,
+            },
+            {
+              weatherCondition: "Snow",
+              totalAccidents: 2000,
+              totalInjured: 600,
+              totalKilled: 15,
+              pedestriansInjured: 100,
+              cyclistsInjured: 50,
+              avgInjuredPerAccident: 0.3,
+              avgKilledPerAccident: 0.0075,
+              fatalityRatePer1000: 7.5,
+            },
+          ],
+          contributingFactors: [
+            {
+              contributingFactor: "Driver Inattention/Distraction",
+              accidentCount: 12000,
+              percentage: 30.0,
+            },
+            {
+              contributingFactor: "Following Too Closely",
+              accidentCount: 8000,
+              percentage: 20.0,
+            },
+            {
+              contributingFactor: "Failure to Yield Right-of-Way",
+              accidentCount: 6000,
+              percentage: 15.0,
+            },
+          ],
+          vehicleTypes: [
+            { vehicleType: "Sedan", involvementCount: 25000, percentage: 40.0 },
+            { vehicleType: "SUV", involvementCount: 15000, percentage: 24.0 },
+            { vehicleType: "Taxi", involvementCount: 10000, percentage: 16.0 },
+          ],
+        },
+      });
+      return;
+    }
+
+    // Execute all queries in parallel for full data
     const [stats, weather, factors, vehicles] = await Promise.all([
-      executeQuery(queries.summaryStatistics),
-      executeQuery(queries.weatherCorrelation),
-      executeQuery(queries.contributingFactors, { limit: 10 }),
-      executeQuery(queries.vehicleTypes, { limit: 10 }),
+      restClient.getStatistics(),
+      restClient.getWeatherCorrelation(),
+      restClient.getContributingFactors(10),
+      restClient.getVehicleTypes(10),
     ]);
 
     res.json({
       success: true,
       data: {
-        statistics: stats.summaryStatistics,
-        weatherCorrelation: weather.weatherAccidentCorrelation,
-        contributingFactors: factors.accidentsByContributingFactor,
-        vehicleTypes: vehicles.accidentsByVehicleType,
+        statistics: stats,
+        weatherCorrelation: weather,
+        contributingFactors: factors,
+        vehicleTypes: vehicles,
       },
     });
   } catch (error) {
@@ -218,6 +272,32 @@ router.post("/webhook", (req, res) => {
     received: true,
     timestamp: new Date().toISOString(),
   });
+});
+
+// ============================================================
+// POST /api/xpath - Execute XPath query (proxy to XML Service)
+// ============================================================
+router.post("/xpath", async (req, res, next) => {
+  try {
+    const { query, limit } = req.body;
+
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        error: "XPath query is required",
+      });
+    }
+
+    const data = await restClient.executeXPath(query, limit || 100);
+
+    res.json({
+      success: true,
+      data: data,
+    });
+  } catch (error) {
+    console.error("[XPath Error]:", error.message);
+    next(error);
+  }
 });
 
 module.exports = router;

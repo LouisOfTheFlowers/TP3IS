@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NYC Collision Analytics</title>
+    <link rel="stylesheet" href="styles/app.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Navigation -->
+      <nav class="navbar">
+        <div class="nav-brand">
+          <h1>🚗 NYC Collision Analytics</h1>
+        </div>
+        <div class="nav-menu">
+          <button class="nav-link active" data-page="dashboard">
+            Dashboard
+          </button>
+          <button class="nav-link" data-page="xpath">XPath Queries</button>
+          <button class="nav-link" data-page="admin">
+            <span class="icon">🔧</span>
+            Admin
+          </button>
+        </div>
+        <div class="nav-status">
+          <span id="connection-status" class="status-badge connecting">●</span>
+          <span id="status-text">Connecting...</span>
+        </div>
+      </nav>
+
+      <!-- Main Content Area -->
+      <main class="main-content">
+        <div id="loading-overlay" class="loading-overlay">
+          <div class="spinner"></div>
+          <p>Loading data...</p>
+        </div>
+
+        <!-- Dashboard Page -->
+        <div id="page-dashboard" class="page-content active">
+          <section class="page-header">
+            <h2>Dashboard Overview</h2>
+            <p>Real-time collision statistics and insights</p>
+            <button id="refresh-dashboard" class="btn-primary">
+              <span class="icon">🔄</span> Refresh Data
+            </button>
+          </section>
+
+          <!-- Stats Cards -->
+          <section class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-info">
+                <h3 id="total-collisions">--</h3>
+                <p>Total Collisions</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-info">
+                <h3 id="total-fatalities">--</h3>
+                <p>Total Fatalities</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-info">
+                <h3 id="total-injuries">--</h3>
+                <p>Total Injuries</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Charts Section -->
+          <section class="charts-section">
+            <div class="chart-container full-width large">
+              <h3>Collisions by Month</h3>
+              <canvas id="monthly-chart"></canvas>
+            </div>
+            <div class="chart-container">
+              <h3>Casualties by Weather Condition</h3>
+              <canvas id="casualties-chart"></canvas>
+            </div>
+            <div class="chart-container">
+              <h3>Collision Types (Contributing Factors)</h3>
+              <canvas id="collision-types-chart"></canvas>
+            </div>
+          </section>
+        </div>
+
+        <!-- XPath Queries Page -->
+        <div id="page-xpath" class="page-content">
+          <section class="page-header">
+            <h2>XPath Query Console</h2>
+            <p>Execute custom XPath queries on collision data</p>
+          </section>
+
+          <div class="xpath-console">
+            <div class="query-builder">
+              <h3>Predefined Queries</h3>
+              <div class="query-buttons">
+                <button class="query-btn" data-query="1">
+                  Weather-Related Collisions
+                </button>
+                <button class="query-btn" data-query="2">
+                  Non-Weather Collisions
+                </button>
+                <button class="query-btn" data-query="3">
+                  Multi-Vehicle Accidents
+                </button>
+                <button class="query-btn" data-query="4">
+                  Night-Time Collisions
+                </button>
+                <button class="query-btn" data-query="5">
+                  Fatal Accidents
+                </button>
+              </div>
+            </div>
+
+            <div class="custom-query">
+              <h3>Custom Query</h3>
+              <textarea
+                id="xpath-input"
+                class="xpath-textarea"
+                placeholder="Enter your XPath query here... (e.g., //col:collision[col:weather/col:condition='Rain'])"
+              ></textarea>
+              <div class="query-controls">
+                <label>
+                  Result Limit:
+                  <input
+                    type="number"
+                    id="xpath-limit"
+                    value="100"
+                    min="1"
+                    max="1000"
+                    class="input-field small"
+                  />
+                </label>
+                <button id="execute-xpath" class="btn-primary">
+                  Execute Query
+                </button>
+              </div>
+            </div>
+
+            <div class="query-results">
+              <h3>Results</h3>
+              <div id="xpath-stats" class="xpath-stats"></div>
+              <div id="xpath-output" class="xpath-output"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Page -->
+        <div id="page-admin" class="page-content">
+          <section class="page-header">
+            <h2>Data Management Console</h2>
+            <p>Manage data pipeline and database operations</p>
+          </section>
+
+          <div class="admin-sections">
+            <!-- Pipeline Control -->
+            <div class="admin-card">
+              <h3>Data Pipeline</h3>
+              <p>Control the data collection and processing pipeline</p>
+              <div class="pipeline-steps">
+                <div class="step">
+                  <span class="step-number">1</span>
+                  <span class="step-name">Scrape Collision Data</span>
+                  <span class="step-status" id="scrape-status">Ready</span>
+                </div>
+                <div class="step">
+                  <span class="step-number">2</span>
+                  <span class="step-name">Enrich with Weather</span>
+                  <span class="step-status" id="enrich-status">Ready</span>
+                </div>
+                <div class="step">
+                  <span class="step-number">3</span>
+                  <span class="step-name">Upload to Storage</span>
+                  <span class="step-status" id="upload-status">Ready</span>
+                </div>
+                <div class="step">
+                  <span class="step-number">4</span>
+                  <span class="step-name">Load to Database</span>
+                  <span class="step-status" id="load-status">Ready</span>
+                </div>
+              </div>
+              <div class="button-group">
+                <button id="run-pipeline" class="btn-primary">
+                  Run Full Pipeline
+                </button>
+                <button id="load-only" class="btn-secondary">
+                  Load to DB Only
+                </button>
+              </div>
+            </div>
+
+            <!-- Database Info -->
+            <div class="admin-card">
+              <h3>Database Status</h3>
+              <p>Current database statistics and health</p>
+              <div class="db-stats">
+                <div class="db-stat">
+                  <span class="label">XML Documents:</span>
+                  <span class="value" id="db-xml-count">--</span>
+                </div>
+                <div class="db-stat">
+                  <span class="label">Total Records:</span>
+                  <span class="value" id="db-record-count">--</span>
+                </div>
+                <div class="db-stat">
+                  <span class="label">Last Updated:</span>
+                  <span class="value" id="db-last-update">--</span>
+                </div>
+                <div class="db-stat">
+                  <span class="label">Database Size:</span>
+                  <span class="value" id="db-size">--</span>
+                </div>
+              </div>
+              <button id="refresh-db-stats" class="btn-secondary">
+                <span class="icon">🔄</span>
+                Refresh Stats
+              </button>
+            </div>
+
+            <!-- System Logs -->
+            <div class="admin-card full-width">
+              <h3>📋 Operation Logs</h3>
+              <div id="operation-logs" class="logs-container">
+                <p class="log-empty">
+                  No operations yet. Run a pipeline operation to see logs.
+                </p>
+              </div>
+              <button id="clear-logs" class="btn-secondary">Clear Logs</button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Toast Notifications -->
+      <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

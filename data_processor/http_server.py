@@ -66,14 +66,14 @@ def load_data():
         
         print("[SUCCESS] Collision data fetched successfully")
         
-        # Step 2: Run enrich_with_weather.py
+        # Step 2: Run enrich_with_weather_new.py (WeatherAPI.com)
         print("[STEP 2] Enriching collision data with weather information...")
         result = subprocess.run(
-            [sys.executable, 'enrich_with_weather.py'],
+            [sys.executable, 'enrich_with_weather_new.py'],
             cwd=crawler_dir,
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=180  # Increased timeout for weather API calls
         )
         
         print("STDOUT:", result.stdout)

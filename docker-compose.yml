@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   # ============================================================
-  # XML Service (Python/Flask - GraphQL)
-  # Protocol: GraphQL
+  # XML Service (Python/Flask - REST)
+  # Protocol C: RPC/REST/gRPC
   # ============================================================
   xml-service:
     build:
@@ -33,7 +33,7 @@ services:
 
   # ============================================================
   # BI Service (Node.js/Express - REST)
-  # Protocol: REST
+  # Protocol D: REST for Visualization
   # ============================================================
   bi-service:
     build:
@@ -43,7 +43,7 @@ services:
     ports:
       - "${BI_SERVICE_PORT:-5001}:5001"
     environment:
-      - XML_SERVICE_URL=http://xml-service:5000/graphql
+      - XML_SERVICE_URL=http://xml-service:5000/api
       - DATA_PROCESSOR_URL=http://data-processor:8001
       - PORT=5001
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
