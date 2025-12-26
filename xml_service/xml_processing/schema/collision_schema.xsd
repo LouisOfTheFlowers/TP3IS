@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://collision.data/schema"
+           xmlns:col="http://collision.data/schema"
+           elementFormDefault="qualified">
+    
+    <!-- Root element -->
+    <xs:element name="collisionDataset" type="col:CollisionDatasetType"/>
+    
+    <!-- Dataset type containing metadata and collisions -->
+    <xs:complexType name="CollisionDatasetType">
+        <xs:sequence>
+            <xs:element name="metadata" type="col:MetadataType"/>
+            <xs:element name="collisions" type="col:CollisionsType"/>
+        </xs:sequence>
+        <xs:attribute name="version" type="xs:string" use="required"/>
+    </xs:complexType>
+    
+    <!-- Metadata type -->
+    <xs:complexType name="MetadataType">
+        <xs:sequence>
+            <xs:element name="source" type="xs:string"/>
+            <xs:element name="generatedAt" type="xs:dateTime"/>
+            <xs:element name="totalRecords" type="xs:integer"/>
+            <xs:element name="requestId" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Collisions container -->
+    <xs:complexType name="CollisionsType">
+        <xs:sequence>
+            <xs:element name="collision" type="col:CollisionType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Individual collision type -->
+    <xs:complexType name="CollisionType">
+        <xs:sequence>
+            <xs:element name="crashInfo" type="col:CrashInfoType"/>
+            <xs:element name="casualties" type="col:CasualtiesType"/>
+            <xs:element name="contributingFactors" type="col:ContributingFactorsType"/>
+            <xs:element name="vehicles" type="col:VehiclesType"/>
+            <xs:element name="weather" type="col:WeatherType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:string" use="required"/>
+    </xs:complexType>
+    
+    <!-- Crash information -->
+    <xs:complexType name="CrashInfoType">
+        <xs:sequence>
+            <xs:element name="date" type="xs:date"/>
+            <xs:element name="time" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Casualties information -->
+    <xs:complexType name="CasualtiesType">
+        <xs:sequence>
+            <xs:element name="personsInjured" type="xs:integer"/>
+            <xs:element name="personsKilled" type="xs:integer"/>
+            <xs:element name="pedestriansInjured" type="xs:integer"/>
+            <xs:element name="pedestriansKilled" type="xs:integer"/>
+            <xs:element name="cyclistsInjured" type="xs:integer"/>
+            <xs:element name="cyclistsKilled" type="xs:integer"/>
+            <xs:element name="motoristsInjured" type="xs:integer"/>
+            <xs:element name="motoristsKilled" type="xs:integer"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Contributing factors -->
+    <xs:complexType name="ContributingFactorsType">
+        <xs:sequence>
+            <xs:element name="factor" type="xs:string" minOccurs="0" maxOccurs="5"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Vehicles involved -->
+    <xs:complexType name="VehiclesType">
+        <xs:sequence>
+            <xs:element name="vehicle" type="xs:string" minOccurs="0" maxOccurs="5"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Weather conditions -->
+    <xs:complexType name="WeatherType">
+        <xs:sequence>
+            <xs:element name="condition" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+</xs:schema>

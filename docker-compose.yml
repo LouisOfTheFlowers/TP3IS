@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # ============================================================
+  # XML Service (Python/Flask - GraphQL)
+  # Protocol: GraphQL
+  # ============================================================
+  xml-service:
+    build:
+      context: ./xml_service
+      dockerfile: Dockerfile
+    container_name: xml_service
+    ports:
+      - "${XML_SERVICE_PORT:-5000}:5000"
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - XML_SERVICE_PORT=5000
+    env_file:
+      - .env
+    networks:
+      - collision_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================
+  # BI Service (Node.js/Express - REST)
+  # Protocol: REST
+  # ============================================================
+  bi-service:
+    build:
+      context: ./bi_service_node
+      dockerfile: Dockerfile
+    container_name: bi_service
+    ports:
+      - "${BI_SERVICE_PORT:-5001}:5001"
+    environment:
+      - XML_SERVICE_URL=http://xml-service:5000/graphql
+      - DATA_PROCESSOR_URL=http://data-processor:8001
+      - PORT=5001
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    env_file:
+      - .env
+    networks:
+      - collision_network
+    depends_on:
+      xml-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================
+  # gRPC Service (Go)
+  # Protocol: gRPC
+  # ============================================================
+  grpc-service:
+    build:
+      context: ./grpc_service
+      dockerfile: Dockerfile
+    container_name: grpc_service
+    ports:
+      - "${GRPC_SERVICE_PORT:-50051}:50051"
+    environment:
+      - GRPC_PORT=50051
+      - XML_SERVICE_URL=http://xml-service:5000/graphql
+    env_file:
+      - .env
+    networks:
+      - collision_network
+    depends_on:
+      xml-service:
+        condition: service_started
+    restart: unless-stopped
+
+  # ============================================================
+  # Data Processor (Python - XML-RPC)
+  # Protocol: XML-RPC
+  # ============================================================
+  data-processor:
+    build:
+      context: .
+      dockerfile: data_processor/Dockerfile
+    container_name: data_processor
+    ports:
+      - "${XMLRPC_SERVICE_PORT:-8000}:8000"
+      - "8001:8001"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - XML_SERVICE_URL=http://xml-service:5000/graphql
+      - XMLRPC_PORT=8000
+      - HTTP_PORT=8001
+      - XMLRPC_HOST=0.0.0.0
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+    env_file:
+      - .env
+    networks:
+      - collision_network
+    depends_on:
+      xml-service:
+        condition: service_started
+    restart: unless-stopped
+
+  # ============================================================
+  # Frontend (JavaScript/Vite - served by Nginx)
+  # ============================================================
+  frontend:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    environment:
+      - BI_SERVICE_URL=http://bi-service:5001
+    networks:
+      - collision_network
+    depends_on:
+      bi-service:
+        condition: service_started
+    restart: unless-stopped
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  collision_network:
+    name: collision_network
+    driver: bridge

@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package collision;
+
+option go_package = "./proto";
+
+// CollisionService - gRPC service for collision data queries
+// This service acts as a bridge between services, exposing XML Service data via gRPC
+service CollisionService {
+    // Get summary statistics from all collision documents
+    rpc GetSummaryStatistics(Empty) returns (SummaryStatisticsResponse);
+    
+    // Get casualties grouped by weather condition
+    rpc GetCasualtiesByWeather(WeatherFilter) returns (WeatherCasualtiesResponse);
+    
+    // Get weather-accident correlation data
+    rpc GetWeatherAccidentCorrelation(Empty) returns (WeatherCorrelationResponse);
+    
+    // Get accidents by contributing factor
+    rpc GetAccidentsByFactor(FactorRequest) returns (ContributingFactorResponse);
+    
+    // Get accidents by time period
+    rpc GetAccidentsByTimePeriod(TimePeriodRequest) returns (TimePeriodResponse);
+    
+    // Get accidents by vehicle type
+    rpc GetAccidentsByVehicleType(VehicleTypeRequest) returns (VehicleTypeResponse);
+    
+    // Health check
+    rpc HealthCheck(Empty) returns (HealthResponse);
+}
+
+// Empty message for requests with no parameters
+message Empty {}
+
+// Health check response
+message HealthResponse {
+    bool healthy = 1;
+    string service = 2;
+    string version = 3;
+    string timestamp = 4;
+}
+
+// Filter for weather-based queries
+message WeatherFilter {
+    string weather_condition = 1;
+}
+
+// Request for contributing factor analysis
+message FactorRequest {
+    int32 limit = 1;
+}
+
+// Request for time period analysis
+message TimePeriodRequest {
+    string start_date = 1;
+    string end_date = 2;
+    string group_by = 3; // "hour", "date", "month"
+}
+
+// Request for vehicle type analysis
+message VehicleTypeRequest {
+    int32 limit = 1;
+}
+
+// Summary statistics response
+message SummaryStatisticsResponse {
+    int32 total_collisions = 1;
+    int32 total_injured = 2;
+    int32 total_killed = 3;
+    int32 total_documents = 4;
+}
+
+// Weather casualties data
+message WeatherCasualty {
+    string weather_condition = 1;
+    int32 total_accidents = 2;
+    int32 total_injured = 3;
+    int32 total_killed = 4;
+    double avg_casualties_per_accident = 5;
+}
+
+message WeatherCasualtiesResponse {
+    repeated WeatherCasualty casualties = 1;
+}
+
+// Weather correlation data
+message WeatherCorrelation {
+    string weather_condition = 1;
+    int32 total_accidents = 2;
+    int32 total_injured = 3;
+    int32 total_killed = 4;
+    int32 pedestrians_injured = 5;
+    int32 cyclists_injured = 6;
+    double avg_injured_per_accident = 7;
+    double avg_killed_per_accident = 8;
+    double fatality_rate_per_1000 = 9;
+}
+
+message WeatherCorrelationResponse {
+    repeated WeatherCorrelation correlations = 1;
+}
+
+// Contributing factor statistics
+message ContributingFactorStats {
+    string contributing_factor = 1;
+    int32 accident_count = 2;
+    double percentage = 3;
+}
+
+message ContributingFactorResponse {
+    repeated ContributingFactorStats factors = 1;
+}
+
+// Time period statistics
+message TimePeriodStats {
+    string time_period = 1;
+    int32 total_accidents = 2;
+    int32 total_injured = 3;
+    int32 total_killed = 4;
+}
+
+message TimePeriodResponse {
+    repeated TimePeriodStats periods = 1;
+}
+
+// Vehicle type statistics
+message VehicleTypeStats {
+    string vehicle_type = 1;
+    int32 involvement_count = 2;
+    double percentage = 3;
+}
+
+message VehicleTypeResponse {
+    repeated VehicleTypeStats vehicles = 1;
+}

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NYC Collision Analytics Dashboard</title>
+    <link rel="stylesheet" href="styles/main.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <h1>🚗 NYC Collision Analytics Dashboard</h1>
+          <p class="subtitle">Weather Impact & Accident Correlation Analysis</p>
+        </div>
+        <div class="header-actions">
+          <button
+            id="load-data-btn"
+            class="btn-primary"
+            title="Fetch and load collision data"
+          >
+            <span class="btn-icon">🔄</span>
+            <span class="btn-text">Load Data</span>
+          </button>
+        </div>
+        <div class="header-status">
+          <span id="connection-status" class="status-badge">Connecting...</span>
+          <span id="last-update" class="last-update"></span>
+        </div>
+      </header>
+
+      <!-- Summary Cards -->
+      <section class="summary-section">
+        <div class="summary-cards">
+          <div class="summary-card">
+            <div class="card-icon">📊</div>
+            <div class="card-content">
+              <span class="card-value" id="total-collisions">--</span>
+              <span class="card-label">Total Collisions</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="card-icon">🩹</div>
+            <div class="card-content">
+              <span class="card-value" id="total-injured">--</span>
+              <span class="card-label">Total Injured</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="card-icon">⚠️</div>
+            <div class="card-content">
+              <span class="card-value" id="total-killed">--</span>
+              <span class="card-label">Total Fatalities</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="card-icon">📄</div>
+            <div class="card-content">
+              <span class="card-value" id="total-documents">--</span>
+              <span class="card-label">Data Documents</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Navigation Tabs -->
+      <nav class="tabs-nav">
+        <button class="tab-btn active" data-tab="correlation">
+          🌦️ Weather Correlation
+        </button>
+        <button class="tab-btn" data-tab="weather">☁️ Weather Impact</button>
+        <button class="tab-btn" data-tab="factors">
+          📋 Contributing Factors
+        </button>
+        <button class="tab-btn" data-tab="time">⏰ Time Analysis</button>
+      </nav>
+
+      <!-- Main Content Area -->
+      <main class="main-content">
+        <!-- Weather Correlation Tab (Main Feature) -->
+        <section id="correlation-tab" class="tab-content active">
+          <div class="section-header">
+            <h2>Weather-Accident Correlation Analysis</h2>
+            <p>
+              Explore the relationship between weather conditions and accident
+              severity
+            </p>
+          </div>
+
+          <div class="correlation-metrics">
+            <div class="metric-card highlight">
+              <span class="metric-label">Highest Risk Weather</span>
+              <span class="metric-value" id="highest-risk-weather">--</span>
+              <span class="metric-sub" id="highest-risk-score"
+                >Risk Score: --</span
+              >
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Most Accidents</span>
+              <span class="metric-value" id="most-accidents-weather">--</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Highest Fatality Rate</span>
+              <span class="metric-value" id="highest-fatality-weather">--</span>
+            </div>
+          </div>
+
+          <div class="charts-row">
+            <div class="chart-container">
+              <h3>Accidents by Weather Condition</h3>
+              <canvas id="correlation-bar-chart"></canvas>
+            </div>
+            <div class="chart-container">
+              <h3>Risk Score vs Accident Count</h3>
+              <canvas id="correlation-scatter-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="data-table-container">
+            <h3>Detailed Correlation Data</h3>
+            <table class="data-table" id="correlation-table">
+              <thead>
+                <tr>
+                  <th>Weather Condition</th>
+                  <th>Accidents</th>
+                  <th>Injured</th>
+                  <th>Killed</th>
+                  <th>Fatality Rate (‰)</th>
+                  <th>Risk Score</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Weather Impact Tab -->
+        <section id="weather-tab" class="tab-content">
+          <div class="section-header">
+            <h2>Weather Impact Dashboard</h2>
+            <p>
+              Analyze how different weather conditions affect accident
+              statistics
+            </p>
+          </div>
+
+          <div class="filter-bar">
+            <label for="weather-filter">Filter by weather:</label>
+            <input
+              type="text"
+              id="weather-filter"
+              placeholder="e.g., Rain, Clear, Snow..."
+            />
+            <button id="apply-weather-filter" class="btn-primary">
+              Apply Filter
+            </button>
+            <button id="clear-weather-filter" class="btn-secondary">
+              Clear
+            </button>
+          </div>
+
+          <div class="charts-row">
+            <div class="chart-container large">
+              <h3>Casualties by Weather Condition</h3>
+              <canvas id="weather-bar-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="charts-row">
+            <div class="chart-container">
+              <h3>Severity Index Distribution</h3>
+              <canvas id="weather-severity-chart"></canvas>
+            </div>
+            <div class="chart-container">
+              <h3>Accident Share by Weather</h3>
+              <canvas id="weather-pie-chart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Contributing Factors Tab -->
+        <section id="factors-tab" class="tab-content">
+          <div class="section-header">
+            <h2>Contributing Factors Analysis</h2>
+            <p>Understand the main causes of traffic collisions</p>
+          </div>
+
+          <div class="charts-row">
+            <div class="chart-container large">
+              <h3>Top Contributing Factors</h3>
+              <canvas id="factors-bar-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="charts-row">
+            <div class="chart-container">
+              <h3>Factor Categories</h3>
+              <canvas id="factors-category-chart"></canvas>
+            </div>
+            <div class="chart-container">
+              <h3>Top 10 Factors Distribution</h3>
+              <canvas id="factors-pie-chart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Time Analysis Tab -->
+        <section id="time-tab" class="tab-content">
+          <div class="section-header">
+            <h2>Time-Based Analysis</h2>
+            <p>Discover accident patterns over time</p>
+          </div>
+
+          <div class="filter-bar">
+            <label for="time-group-by">Group by:</label>
+            <select id="time-group-by">
+              <option value="hour">Hour of Day</option>
+              <option value="date">Date</option>
+              <option value="month">Month</option>
+            </select>
+            <label for="time-start-date">From:</label>
+            <input type="date" id="time-start-date" />
+            <label for="time-end-date">To:</label>
+            <input type="date" id="time-end-date" />
+            <button id="apply-time-filter" class="btn-primary">Apply</button>
+          </div>
+
+          <div class="time-insights">
+            <div class="insight-card">
+              <span class="insight-label">Peak Period</span>
+              <span class="insight-value" id="peak-period">--</span>
+              <span class="insight-sub" id="peak-accidents">-- accidents</span>
+            </div>
+            <div class="insight-card">
+              <span class="insight-label">Lowest Period</span>
+              <span class="insight-value" id="low-period">--</span>
+              <span class="insight-sub" id="low-accidents">-- accidents</span>
+            </div>
+            <div class="insight-card">
+              <span class="insight-label">Average</span>
+              <span class="insight-value" id="avg-accidents">--</span>
+              <span class="insight-sub">accidents per period</span>
+            </div>
+          </div>
+
+          <div class="chart-container large">
+            <h3>Accidents Over Time</h3>
+            <canvas id="time-line-chart"></canvas>
+          </div>
+        </section>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>
+          NYC Collision Data Analytics | Data Source: NYC Open Data | Weather:
+          Visual Crossing API
+        </p>
+      </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="loader"></div>
+      <p>Loading data...</p>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>⚠️ Error</h3>
+        <p id="error-message"></p>
+        <button id="close-error" class="btn-primary">Close</button>
+      </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

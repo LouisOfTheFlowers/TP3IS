@@ -3,7 +3,7 @@ import requests
 import os
 from dotenv import load_dotenv
 
-# load env variables
+
 load_dotenv()
 
 API_KEY = os.getenv("WEATHER_API_KEY")
@@ -15,15 +15,10 @@ if not API_KEY:
 print("📄 Loading collisions_raw.csv...")
 df = pd.read_csv("collisions_raw.csv")
 
-# ----------------------------
-# 1️⃣ CLEAN DATE
-# ----------------------------
-# NYC dates look like: 2018-01-01T00:00:00.000
+
 df["date"] = df["crash_date"].astype(str).str.slice(0, 10)
 
-# ----------------------------
-# 2️⃣ SAFE HOUR PARSING
-# ----------------------------
+
 def parse_hour(t):
     try:
         hour = int(str(t).split(":")[0])
@@ -33,16 +28,12 @@ def parse_hour(t):
 
 df["hour"] = df["crash_time"].apply(parse_hour)
 
-# ----------------------------
-# 3️⃣ UNIQUE DATES (KEY OPTIMIZATION)
-# ----------------------------
+
 unique_dates = df["date"].dropna().unique()
 
 print(f"📆 Unique dates to fetch: {len(unique_dates)}")
 
-# ----------------------------
-# 4️⃣ FETCH WEATHER (1 CALL PER DAY)
-# ----------------------------
+
 weather_by_day = {}
 
 for date in unique_dates:
@@ -72,9 +63,7 @@ for date in unique_dates:
 
 print("✅ Weather data fetched")
 
-# ----------------------------
-# 5️⃣ MAP WEATHER TO ACCIDENTS
-# ----------------------------
+
 def map_weather(row):
     try:
         return weather_by_day[row["date"]][row["hour"]]
