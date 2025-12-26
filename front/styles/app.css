@@ -130,6 +130,19 @@ body {
   50% { opacity: 0.5; }
 }
 
+.update-indicator {
+  color: var(--primary-color);
+  font-size: 1.2rem;
+  font-weight: bold;
+  animation: spin 1s linear infinite;
+  margin-left: 0.5rem;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* ==================== MAIN CONTENT ==================== */
 .main-content {
   flex: 1;

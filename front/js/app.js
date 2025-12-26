@@ -1,6 +1,7 @@
 // ==================== CONFIGURATION ====================
 const API_BASE = "/api";
-const REFRESH_INTERVAL = 30000; // 30 seconds
+const REFRESH_INTERVAL = 120000; // 2 minutes (reduced from 30 seconds)
+const CACHE_DURATION = 60000; // 1 minute cache
 
 // ==================== STATE MANAGEMENT ====================
 const state = {
@@ -10,16 +11,31 @@ const state = {
   charts: {},
   data: {},
   logs: [],
+  cache: {}, // Add cache for API responses
+  lastFetch: {}, // Track last fetch times
 };
 
 // ==================== UTILITY FUNCTIONS ====================
 const utils = {
   // Show/hide loading overlay
-  setLoading(isLoading) {
+  setLoading(isLoading, silent = false) {
     state.isLoading = isLoading;
-    document
-      .getElementById("loading-overlay")
-      .classList.toggle("active", isLoading);
+    
+    const loadingOverlay = document.getElementById("loading-overlay");
+    const updateIndicator = document.getElementById("update-indicator");
+    
+    if (!silent) {
+      // Show full loading overlay
+      loadingOverlay.classList.toggle("active", isLoading);
+      if (updateIndicator) {
+        updateIndicator.style.display = "none";
+      }
+    } else {
+      // Show subtle update indicator only
+      if (updateIndicator) {
+        updateIndicator.style.display = isLoading ? "inline-block" : "none";
+      }
+    }
   },
 
   // Show toast notification
@@ -38,8 +54,21 @@ const utils = {
     }, 4000);
   },
 
-  // API call wrapper
+  // API call wrapper with caching
   async apiCall(endpoint, options = {}) {
+    const cacheKey = `${endpoint}_${JSON.stringify(options)}`;
+    const now = Date.now();
+    
+    // Check if we have valid cached data
+    if (
+      state.cache[cacheKey] && 
+      state.lastFetch[cacheKey] && 
+      (now - state.lastFetch[cacheKey]) < CACHE_DURATION
+    ) {
+      console.log(`📦 Using cached data for ${endpoint}`);
+      return state.cache[cacheKey];
+    }
+
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
@@ -54,9 +83,21 @@ const utils = {
       }
 
       const data = await response.json();
+      
+      // Cache the response
+      state.cache[cacheKey] = data;
+      state.lastFetch[cacheKey] = now;
+      
       return data;
     } catch (error) {
       console.error(`API Error [${endpoint}]:`, error);
+      
+      // Return cached data if available, even if expired
+      if (state.cache[cacheKey]) {
+        console.log(`⚠️ Using stale cached data for ${endpoint}`);
+        return state.cache[cacheKey];
+      }
+      
       throw error;
     }
   },
@@ -110,6 +151,13 @@ const utils = {
     `
       )
       .join("");
+  },
+
+  // Clear API cache
+  clearCache() {
+    state.cache = {};
+    state.lastFetch = {};
+    console.log("🗑️ Cache cleared");
   },
 };
 
@@ -177,22 +225,46 @@ const navigation = {
 
 // ==================== DASHBOARD PAGE ====================
 const dashboard = {
-  async load() {
+  async load(forceRefresh = false) {
     try {
-      utils.setLoading(true);
+      // Use silent loading for auto-refreshes (no spinner)
+      const isSilent = !forceRefresh && state.data.dashboard;
+      utils.setLoading(true, isSilent);
 
-      // Load statistics data
-      const statsResponse = await utils.apiCall("/statistics");
+      // Clear cache if forcing refresh
+      if (forceRefresh) {
+        state.cache = {};
+        state.lastFetch = {};
+      }
+
+      // Load all data in parallel for better performance
+      const [statsResponse, monthlyResponse, casualtiesResponse, collisionTypesResponse] = 
+        await Promise.all([
+          utils.apiCall("/statistics"),
+          utils.apiCall("/time-period?groupBy=month"),
+          utils.apiCall("/weather-correlation"),
+          utils.apiCall("/contributing-factors?limit=10")
+        ]);
+
+      // Extract data
       const stats = statsResponse.data || statsResponse;
+      const monthlyData = monthlyResponse.data || monthlyResponse;
+      const casualtiesData = casualtiesResponse.data || casualtiesResponse;
+      const collisionTypesData = collisionTypesResponse.data || collisionTypesResponse;
+
       state.data.dashboard = stats;
 
       // Update stats cards
       this.updateStats(stats);
 
-      // Create/update charts
-      await this.loadCharts();
+      // Update charts without additional API calls
+      this.createMonthlyChart(Array.isArray(monthlyData) ? monthlyData : []);
+      this.createCasualtiesChart(Array.isArray(casualtiesData) ? casualtiesData : []);
+      this.createCollisionTypesChart(Array.isArray(collisionTypesData) ? collisionTypesData : []);
 
-      utils.showToast("Dashboard data loaded successfully", "success");
+      if (!isSilent) {
+        utils.showToast("Dashboard data loaded successfully", "success");
+      }
     } catch (error) {
       console.error("Dashboard load error:", error);
       utils.showToast("Failed to load dashboard data", "error");
@@ -209,34 +281,6 @@ const dashboard = {
     document.getElementById("total-injuries").textContent = utils.formatNumber(
       stats.totalInjured || stats.totalInjuries || 0
     );
-  },
-
-  async loadCharts() {
-    try {
-      // Monthly collisions chart
-      const monthlyResponse = await utils.apiCall("/time-period?groupBy=month");
-      const monthlyData = monthlyResponse.data || monthlyResponse;
-      this.createMonthlyChart(Array.isArray(monthlyData) ? monthlyData : []);
-
-      // Casualties chart - use weather-correlation endpoint
-      const casualtiesResponse = await utils.apiCall("/weather-correlation");
-      const casualtiesData = casualtiesResponse.data || casualtiesResponse;
-      this.createCasualtiesChart(
-        Array.isArray(casualtiesData) ? casualtiesData : []
-      );
-
-      // Collision types chart - use contributing-factors endpoint
-      const collisionTypesResponse = await utils.apiCall(
-        "/contributing-factors?limit=10"
-      );
-      const collisionTypesData =
-        collisionTypesResponse.data || collisionTypesResponse;
-      this.createCollisionTypesChart(
-        Array.isArray(collisionTypesData) ? collisionTypesData : []
-      );
-    } catch (error) {
-      console.error("Charts load error:", error);
-    }
   },
 
   createMonthlyChart(data) {
@@ -814,8 +858,12 @@ const admin = {
 const connectionMonitor = {
   async checkConnection() {
     try {
-      await utils.apiCall("/health");
-      this.setStatus(true);
+      // Use a simple fetch without going through apiCall to avoid caching
+      const response = await fetch(`${API_BASE}/health`, {
+        method: 'GET',
+        cache: 'no-cache'
+      });
+      this.setStatus(response.ok);
     } catch (error) {
       this.setStatus(false);
     }
@@ -853,17 +901,17 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("refresh-dashboard")
     ?.addEventListener("click", () => {
       if (state.currentPage === "dashboard") {
-        dashboard.load();
+        dashboard.load(true); // Force refresh with spinner
       }
     });
 
   // Start connection monitoring
   connectionMonitor.start();
 
-  // Auto-refresh dashboard data
+  // Auto-refresh dashboard data (silent, no spinner)
   setInterval(() => {
     if (state.currentPage === "dashboard" && !state.isLoading) {
-      dashboard.load();
+      dashboard.load(false); // Silent refresh without spinner
     }
   }, REFRESH_INTERVAL);
 
