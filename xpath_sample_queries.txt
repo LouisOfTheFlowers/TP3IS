@@ -1,11 +1,5 @@
-===============================================================
-XPATH SAMPLE QUERIES FOR NYC COLLISION DATA
-===============================================================
+docker-compose down && docker-compose build --no-cache && docker-compose up -d
 
-These queries can be used in the XPath Query Console to analyze
-collision data stored in XML format with namespace prefix 'col:'.
-
-===============================================================
 
 1. Brooklyn Fatal Accidents
 -----------------------------------------------------------
@@ -111,21 +105,3 @@ Find accidents caused by driver inattention/distraction
 
 //col:collision[col:contributingFactors/col:factor[contains(text(), 'Inattention') or contains(text(), 'Distraction')]]
 
-===============================================================
-USAGE NOTES:
-===============================================================
-
-- All queries use the namespace prefix 'col:' which maps to
-  'http://collision.data/schema'
-
-- Queries can be combined using 'and' / 'or' operators
-
-- Use contains() for partial text matching
-
-- Use substring() to extract parts of dates/times
-
-- Use count() to count child elements
-
-- Adjust limit parameter in the UI to control result count
-
-===============================================================
