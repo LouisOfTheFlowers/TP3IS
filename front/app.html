@@ -27,7 +27,12 @@
         <div class="nav-status">
           <span id="connection-status" class="status-badge connecting">●</span>
           <span id="status-text">Connecting...</span>
-          <span id="update-indicator" class="update-indicator" style="display: none;">↻</span>
+          <span
+            id="update-indicator"
+            class="update-indicator"
+            style="display: none"
+            >↻</span
+          >
         </div>
       </nav>
 
@@ -241,5 +246,36 @@
 
     <!-- Scripts -->
     <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/app-xpath.js"></script>
+
+    <style>
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideOut {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
+
+      .xpath-results-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+    </style>
   </body>
 </html>

@@ -125,7 +125,7 @@ const restClient = {
    * @param {string} query - XPath expression
    * @param {number} limit - Result limit
    */
-  executeXPath: (query, limit = 100) => post("/xpath/query", { query, limit }),
+  executeXPath: (query, limit = 100) => post("/xpath", { xpath: query, limit }),
 
   /**
    * Get dashboard data (all at once)

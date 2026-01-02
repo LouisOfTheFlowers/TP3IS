@@ -148,6 +148,54 @@ def get_vehicle_types():
 # XPath Query Endpoints (Custom queries)
 # ============================================================
 
+@rest_api.route('/xpath', methods=['POST'])
+def execute_xpath_short():
+    """
+    POST /api/xpath
+    Execute a custom XPath query on XML documents (short route)
+    
+    Request body:
+    {
+        "query": "//collision[@weatherCondition='Rain']",
+        "xpath": "//collision[@weatherCondition='Rain']",  (alternative)
+        "limit": 100
+    }
+    """
+    try:
+        data = request.get_json()
+        # Support both 'query' and 'xpath' parameter names
+        xpath_query = data.get('query') or data.get('xpath')
+        limit = data.get('limit', 100)
+        
+        if not xpath_query:
+            return jsonify({
+                'success': False,
+                'error': 'XPath query is required (use "query" or "xpath" parameter)'
+            }), 400
+        
+        print(f"[XML Service /xpath] Executing XPath: {xpath_query} (limit: {limit})")
+        
+        # Execute the XPath query - returns list of dicts with document_id and result
+        results = xpath_query_service.execute_xpath(xpath_query)
+        
+        # Limit results if specified
+        if limit and len(results) > limit:
+            results = results[:limit]
+        
+        print(f"[XML Service /xpath] XPath returned {len(results)} results")
+            
+        return jsonify({
+            'success': True,
+            'data': results
+        })
+    except Exception as e:
+        print(f"[XML Service /xpath] XPath Error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @rest_api.route('/xpath/query', methods=['POST'])
 def execute_xpath():
     """
@@ -157,19 +205,23 @@ def execute_xpath():
     Request body:
     {
         "query": "//collision[@weatherCondition='Rain']",
+        "xpath": "//collision[@weatherCondition='Rain']",  (alternative)
         "limit": 100
     }
     """
     try:
         data = request.get_json()
-        xpath_query = data.get('query')
+        # Support both 'query' and 'xpath' parameter names
+        xpath_query = data.get('query') or data.get('xpath')
         limit = data.get('limit', 100)
         
         if not xpath_query:
             return jsonify({
                 'success': False,
-                'error': 'XPath query is required'
+                'error': 'XPath query is required (use "query" or "xpath" parameter)'
             }), 400
+        
+        print(f"[XML Service] Executing XPath: {xpath_query} (limit: {limit})")
         
         # Execute the XPath query - returns list of dicts with document_id and result
         results = xpath_query_service.execute_xpath(xpath_query)
@@ -177,12 +229,15 @@ def execute_xpath():
         # Limit results if specified
         if limit and len(results) > limit:
             results = results[:limit]
+        
+        print(f"[XML Service] XPath returned {len(results)} results")
             
         return jsonify({
             'success': True,
             'data': results
         })
     except Exception as e:
+        print(f"[XML Service] XPath Error: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)

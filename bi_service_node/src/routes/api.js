@@ -288,6 +288,7 @@ router.post("/xpath", async (req, res, next) => {
       });
     }
 
+    console.log("[XPath] Executing query:", query);
     const data = await restClient.executeXPath(query, limit || 100);
 
     res.json({
@@ -296,7 +297,10 @@ router.post("/xpath", async (req, res, next) => {
     });
   } catch (error) {
     console.error("[XPath Error]:", error.message);
-    next(error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 });
 

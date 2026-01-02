@@ -171,29 +171,36 @@ def execute_xpath():
     
     Body:
     {
-        "xpath": "//collision[@severity='Fatal']",
+        "query": "//collision[@severity='Fatal']",
+        "xpath": "//collision[@severity='Fatal']", (alternative)
         "limit": 100
     }
     """
     try:
         data = request.get_json()
         
-        if not data or 'xpath' not in data:
-            return jsonify({
-                "success": False,
-                "error": "XPath expression required"
-            }), 400
-        
-        xpath_expr = data['xpath']
+        # Support both 'query' and 'xpath' parameter names
+        xpath_expr = data.get('query') or data.get('xpath')
         limit = data.get('limit', 100)
         
+        if not xpath_expr:
+            return jsonify({
+                "success": False,
+                "error": "XPath expression required (use 'query' or 'xpath' parameter)"
+            }), 400
+        
+        print(f"[REST API] Executing XPath: {xpath_expr} (limit: {limit})")
+        
         results = xpath_query_service.execute_xpath(xpath_expr, limit)
+        
+        print(f"[REST API] XPath returned {len(results)} results")
         
         return jsonify({
             "success": True,
             "data": results
         })
     except Exception as e:
+        print(f"[REST API] XPath Error: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e)

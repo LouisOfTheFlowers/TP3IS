@@ -1,0 +1,131 @@
+===============================================================
+XPATH SAMPLE QUERIES FOR NYC COLLISION DATA
+===============================================================
+
+These queries can be used in the XPath Query Console to analyze
+collision data stored in XML format with namespace prefix 'col:'.
+
+===============================================================
+
+1. Brooklyn Fatal Accidents
+-----------------------------------------------------------
+Find all fatal accidents that occurred in Brooklyn
+
+//col:collision[col:location/col:borough='BROOKLYN' and col:casualties/col:personsKilled > 0]
+
+
+2. Rush Hour Accidents (7-9 AM)
+-----------------------------------------------------------
+Find accidents during morning rush hour
+
+//col:collision[col:crashInfo/col:time[substring(text(), 1, 2) >= '07' and substring(text(), 1, 2) < '09']]
+
+
+3. Pedestrian Injuries in Rain
+-----------------------------------------------------------
+Find accidents involving pedestrian injuries during rainy weather
+
+//col:collision[col:weather/col:condition[contains(text(), 'Rain')] and col:casualties/col:pedestriansInjured > 0]
+
+
+4. High Casualty Accidents (5+ people)
+-----------------------------------------------------------
+Find accidents with 5 or more total casualties
+
+//col:collision[(col:casualties/col:personsInjured + col:casualties/col:personsKilled) >= 5]
+
+
+5. Cyclist Accidents on Clear Days
+-----------------------------------------------------------
+Find accidents involving cyclist injuries during clear weather
+
+//col:collision[col:weather/col:condition='Clear' and col:casualties/col:cyclistsInjured > 0]
+
+
+6. Weekend Accidents
+-----------------------------------------------------------
+Find accidents that occurred on weekends (if date contains day name)
+
+//col:collision[col:crashInfo/col:date[contains(text(), 'Saturday') or contains(text(), 'Sunday')]]
+
+
+7. Multiple Contributing Factors
+-----------------------------------------------------------
+Find accidents with 2 or more contributing factors
+
+//col:collision[count(col:contributingFactors/col:factor) >= 2]
+
+
+8. Single Vehicle Accidents with Fatalities
+-----------------------------------------------------------
+Find fatal accidents involving only one vehicle
+
+//col:collision[count(col:vehicles/col:vehicle) = 1 and col:casualties/col:personsKilled > 0]
+
+
+9. Night-Time Fatal Accidents
+-----------------------------------------------------------
+Find fatal accidents between 10 PM and 4 AM
+
+//col:collision[col:crashInfo/col:time[substring(text(), 1, 2) >= '22' or substring(text(), 1, 2) < '04'] and col:casualties/col:personsKilled > 0]
+
+
+10. Foggy Weather Accidents
+-----------------------------------------------------------
+Find all accidents during foggy conditions
+
+//col:collision[col:weather/col:condition[contains(text(), 'Fog')]]
+
+
+11. Manhattan Multi-Vehicle Accidents
+-----------------------------------------------------------
+Find accidents in Manhattan involving 3 or more vehicles
+
+//col:collision[col:location/col:borough='MANHATTAN' and count(col:vehicles/col:vehicle) >= 3]
+
+
+12. Snowy Weather with Injuries
+-----------------------------------------------------------
+Find accidents during snow with at least one injury
+
+//col:collision[col:weather/col:condition[contains(text(), 'Snow')] and col:casualties/col:personsInjured > 0]
+
+
+13. Afternoon Peak Accidents (4-6 PM)
+-----------------------------------------------------------
+Find accidents during evening rush hour
+
+//col:collision[col:crashInfo/col:time[substring(text(), 1, 2) >= '16' and substring(text(), 1, 2) < '18']]
+
+
+14. Zero Injury Accidents
+-----------------------------------------------------------
+Find accidents with no casualties (property damage only)
+
+//col:collision[col:casualties/col:personsInjured = 0 and col:casualties/col:personsKilled = 0]
+
+
+15. Specific Contributing Factor - Driver Inattention
+-----------------------------------------------------------
+Find accidents caused by driver inattention/distraction
+
+//col:collision[col:contributingFactors/col:factor[contains(text(), 'Inattention') or contains(text(), 'Distraction')]]
+
+===============================================================
+USAGE NOTES:
+===============================================================
+
+- All queries use the namespace prefix 'col:' which maps to
+  'http://collision.data/schema'
+
+- Queries can be combined using 'and' / 'or' operators
+
+- Use contains() for partial text matching
+
+- Use substring() to extract parts of dates/times
+
+- Use count() to count child elements
+
+- Adjust limit parameter in the UI to control result count
+
+===============================================================

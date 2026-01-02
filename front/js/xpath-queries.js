@@ -15,6 +15,7 @@ class XPathQueryService {
    */
   async executeXPath(xpathQuery, limit = 100) {
     try {
+      console.log("[XPath Frontend] Executing query:", xpathQuery);
       const response = await fetch(this.xmlServiceUrl, {
         method: "POST",
         headers: {
@@ -26,7 +27,9 @@ class XPathQueryService {
         }),
       });
 
+      console.log("[XPath Frontend] Response status:", response.status);
       const result = await response.json();
+      console.log("[XPath Frontend] Result:", result);
 
       if (!result.success) {
         throw new Error(result.error || "XPath query failed");
