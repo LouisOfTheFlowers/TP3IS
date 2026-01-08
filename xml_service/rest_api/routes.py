@@ -219,37 +219,7 @@ def get_dashboard():
     Optional query param: quick (return cached data)
     """
     try:
-        quick = request.args.get('quick', 'false').lower() == 'true'
-        
-        if quick:
-            # Return mock/cached data instantly
-            return jsonify({
-                "success": True,
-                "cached": True,
-                "data": {
-                    "statistics": {
-                        "totalCollisions": 100000,
-                        "totalInjured": 25000,
-                        "totalKilled": 250,
-                        "totalDocuments": 1000
-                    },
-                    "weatherCorrelation": [
-                        {"weatherCondition": "Clear", "totalAccidents": 50000, "totalInjured": 12000, "totalKilled": 100},
-                        {"weatherCondition": "Rain", "totalAccidents": 30000, "totalInjured": 9000, "totalKilled": 100},
-                        {"weatherCondition": "Snow", "totalAccidents": 20000, "totalInjured": 4000, "totalKilled": 50}
-                    ],
-                    "contributingFactors": [
-                        {"contributingFactor": "Driver Inattention", "accidentCount": 30000, "percentage": 30.0},
-                        {"contributingFactor": "Following Too Closely", "accidentCount": 15000, "percentage": 15.0},
-                        {"contributingFactor": "Speed", "accidentCount": 10000, "percentage": 10.0}
-                    ],
-                    "vehicleTypes": [
-                        {"vehicleType": "Sedan", "accidentCount": 40000},
-                        {"vehicleType": "SUV", "accidentCount": 25000},
-                        {"vehicleType": "Taxi", "accidentCount": 15000}
-                    ]
-                }
-            })
+       
         
         # Load real data
         statistics = analytics_cache.get_summary_statistics()
