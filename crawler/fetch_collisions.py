@@ -11,36 +11,36 @@ XML_SERVICE_URL = os.getenv("XML_SERVICE_URL", "http://xml-service:5000/api")
 RECORD_LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else 100
 print(f"📊 Record limit set to: {RECORD_LIMIT}")
 
-def get_latest_date_from_db():
-    """Get the latest collision date from the database to avoid re-scraping old data"""
+def get_db_stats():
+    """Get database statistics including total collision count"""
     try:
-        response = requests.get(f"{XML_SERVICE_URL}/latest-collision-date", timeout=10)
+        response = requests.get(f"{XML_SERVICE_URL}/statistics", timeout=10)
         if response.status_code == 200:
             data = response.json()
-            if data.get("success") and data.get("data", {}).get("latestDate"):
-                latest_date = data["data"]["latestDate"]
-                print(f"📅 Latest collision date in database: {latest_date}")
-                return latest_date
+            if data.get("success") and data.get("data"):
+                return data["data"]
     except Exception as e:
-        print(f"⚠️  Could not fetch latest date from database: {e}")
+        print(f"⚠️  Could not fetch database statistics: {e}")
     return None
 
-# Check if we have data in the database
-latest_db_date = get_latest_date_from_db()
+# Check current database statistics
+db_stats = get_db_stats()
+current_total = 0
 
-# Build query parameters with the specified limit
+if db_stats:
+    current_total = db_stats.get("totalCollisions", 0)
+    print(f"📊 Current database has {current_total} collision records")
+
+# Build query parameters - use offset based on current count
+# Filter: Only get data from 2025 and earlier (exclude 2026)
 PARAMS = {
     "$limit": RECORD_LIMIT,   
-    "$order": "crash_date DESC"
+    "$order": "crash_date DESC",
+    "$offset": current_total,  # Skip records we already have
+    "$where": "crash_date < '2026-01-01T00:00:00.000'"  # Only 2025 and earlier
 }
 
-# If we have data, only fetch records newer than the latest date
-if latest_db_date:
-    # Add a day buffer to ensure we don't miss any records
-    print(f"📥 Fetching up to {RECORD_LIMIT} records newer than {latest_db_date}...")
-    PARAMS["$where"] = f"crash_date > '{latest_db_date}'"
-else:
-    print(f"📥 No existing data found, fetching up to {RECORD_LIMIT} records...")
+print(f"📥 Fetching {RECORD_LIMIT} new records (offset: {current_total})...")
 
 print(f"🔗 Requesting data from NYC Open Data API...")
 response = requests.get(URL, params=PARAMS)

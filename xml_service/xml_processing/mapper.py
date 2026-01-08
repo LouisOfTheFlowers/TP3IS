@@ -70,12 +70,24 @@ class CollisionXMLMapper:
     def _format_date(self, date_str: str) -> str:
         """Format date string to ISO format (YYYY-MM-DD)"""
         try:
+            if not date_str or str(date_str).lower() in ['nan', 'none', '']:
+                return ""  # Return empty string instead of today's date
+            
             # Handle various date formats
-            if 'T' in str(date_str):
-                date_str = str(date_str).split('T')[0]
-            return date_str[:10]
-        except Exception:
-            return datetime.now().strftime("%Y-%m-%d")
+            date_str = str(date_str).strip()
+            if 'T' in date_str:
+                date_str = date_str.split('T')[0]
+            
+            # Validate it's a proper date format (YYYY-MM-DD)
+            if len(date_str) >= 10:
+                # Try to parse to validate
+                datetime.strptime(date_str[:10], "%Y-%m-%d")
+                return date_str[:10]
+            
+            return ""  # Return empty string if can't parse
+        except Exception as e:
+            print(f"⚠️  Date parsing error for '{date_str}': {e}")
+            return ""  # Return empty string instead of today's date
     
     def map_collision_to_xml(self, collision_data: Dict[str, Any], collision_id: str) -> etree.Element:
         """
@@ -121,11 +133,42 @@ class CollisionXMLMapper:
             if vehicle_value:
                 self._sub_element(vehicles, "vehicle", vehicle_value)
         
-        # Weather (optional)
-        weather_condition = self._safe_str(collision_data.get("weather_condition", ""))
+        # Weather data (from enriched collision data)
         weather = self._sub_element(collision, "weather")
+        weather_condition = self._safe_str(collision_data.get("weather_condition", ""))
         if weather_condition:
             self._sub_element(weather, "condition", weather_condition)
+        weather_detail = self._safe_str(collision_data.get("weather_detail", ""))
+        if weather_detail:
+            self._sub_element(weather, "detail", weather_detail)
+        
+        # Temperature
+        temp_f = collision_data.get("temperature_f")
+        if temp_f is not None and str(temp_f).lower() not in ['nan', 'none', '']:
+            self._sub_element(weather, "temperatureF", f"{float(temp_f):.1f}")
+        temp_c = collision_data.get("temperature_c")
+        if temp_c is not None and str(temp_c).lower() not in ['nan', 'none', '']:
+            self._sub_element(weather, "temperatureC", f"{float(temp_c):.1f}")
+        
+        # Humidity
+        humidity = collision_data.get("humidity")
+        if humidity is not None and str(humidity).lower() not in ['nan', 'none', '']:
+            self._sub_element(weather, "humidity", f"{float(humidity):.1f}")
+        
+        # Precipitation
+        precipitation = collision_data.get("precipitation")
+        if precipitation is not None and str(precipitation).lower() not in ['nan', 'none', '']:
+            self._sub_element(weather, "precipitation", f"{float(precipitation):.1f}")
+        
+        # Wind speed
+        wind_speed = collision_data.get("wind_speed")
+        if wind_speed is not None and str(wind_speed).lower() not in ['nan', 'none', '']:
+            self._sub_element(weather, "windSpeed", f"{float(wind_speed):.1f}")
+        
+        # Visibility
+        visibility = collision_data.get("visibility")
+        if visibility is not None and str(visibility).lower() not in ['nan', 'none', '']:
+            self._sub_element(weather, "visibility", f"{float(visibility):.1f}")
         
         return collision
     

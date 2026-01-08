@@ -5,6 +5,7 @@ Provides REST endpoints for analytics and XPath queries
 from flask import Blueprint, request, jsonify
 from services.analytics_cache import analytics_cache
 from services.xpath_query_service import xpath_query_service
+from services.duplicate_checker import duplicate_checker
 
 rest_api = Blueprint('rest_api', __name__, url_prefix='/api')
 
@@ -345,6 +346,68 @@ def webhook_receiver():
             'received': True
         })
         
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# ============================================================
+# Duplicate Detection Endpoints
+# ============================================================
+
+@rest_api.route('/duplicates/check', methods=['POST'])
+def check_duplicates():
+    """
+    POST /api/duplicates/check
+    Check which collisions are duplicates without storing them
+    
+    Body:
+    {
+        "collisions": [...]
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or "collisions" not in data:
+            return jsonify({
+                'success': False,
+                'error': 'No collision data provided'
+            }), 400
+        
+        new_collisions, duplicate_collisions, stats = duplicate_checker.check_for_duplicates(data["collisions"])
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'statistics': stats,
+                'new_count': len(new_collisions),
+                'duplicate_count': len(duplicate_collisions),
+                'duplicates': duplicate_collisions[:10]  # Return first 10 duplicates as sample
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@rest_api.route('/duplicates/stats', methods=['GET'])
+def get_duplicate_stats():
+    """
+    GET /api/duplicates/stats
+    Get statistics about duplicates in the database
+    """
+    try:
+        stats = duplicate_checker.get_duplicate_statistics()
+        return jsonify({
+            'success': True,
+            'data': stats
+        })
     except Exception as e:
         return jsonify({
             'success': False,

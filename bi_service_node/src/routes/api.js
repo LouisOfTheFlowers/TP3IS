@@ -167,7 +167,7 @@ router.post("/load-data", async (req, res, next) => {
     const response = await require("axios").post(
       dataProcessorUrl,
       { limit: limit },
-      { timeout: 300000 } // 5 minute timeout for data loading
+      { timeout: 7200000 } // 2 hour timeout for data loading
     );
 
     res.json({

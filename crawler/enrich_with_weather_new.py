@@ -6,12 +6,15 @@ Fetches hourly weather data for NYC collision dates
 import pandas as pd
 import requests
 import time
+import os
 from datetime import datetime
 
 # WeatherAPI.com configuration
-API_KEY = "f1d9335f3cd940b1910154917252612"
+API_KEY = os.getenv("WEATHERAPI_KEY", "f1d9335f3cd940b1910154917252612")
 LOCATION = "New York"  # NYC
 BASE_URL = "http://api.weatherapi.com/v1/history.json"
+
+print(f"🔑 Using WeatherAPI.com with key: {API_KEY[:8]}...{API_KEY[-4:]}")
 
 # Request settings
 REQUEST_TIMEOUT = 15  # seconds
@@ -125,46 +128,47 @@ for idx, date in enumerate(unique_dates, 1):
     
     # Store weather by hour for this date
     hourly_data = {}
+    first_hour_logged = False
     for hour_data in forecast_day["hour"]:
         # Extract hour from time string (format: "YYYY-MM-DD HH:MM")
         time_str = hour_data["time"]
         hour = int(time_str.split(" ")[1].split(":")[0])
         
-        # Derive weather condition from available data
+        # Debug: Log first hour's full data structure
+        if not first_hour_logged:
+            print(f"   DEBUG - Hour data keys: {list(hour_data.keys())}")
+            print(f"   DEBUG - Condition field: {hour_data.get('condition', 'NOT FOUND')}")
+            first_hour_logged = True
+        
+        # Get actual weather condition from API
+        condition_data = hour_data.get("condition", {})
+        if isinstance(condition_data, dict):
+            condition = condition_data.get("text", "Unknown")
+        else:
+            condition = str(condition_data) if condition_data else "Unknown"
+        
+        # If condition is still Unknown, derive from precipitation
+        if condition == "Unknown":
+            precip = hour_data.get("precip_mm", 0)
+            will_rain = hour_data.get("will_it_rain", 0)
+            will_snow = hour_data.get("will_it_snow", 0)
+            
+            if will_snow == 1 or hour_data.get("snow_cm", 0) > 0:
+                condition = "Snow"
+            elif will_rain == 1 or precip > 0:
+                condition = "Rain"
+            elif hour_data.get("cloud", 0) > 50:
+                condition = "Cloudy"
+            else:
+                condition = "Clear"
+        
+        # Get actual humidity from API
+        humidity = hour_data.get("humidity", 50)
+        
+        # Get precipitation
         precip_mm = hour_data.get("precip_mm", 0)
-        snow_cm = hour_data.get("snow_cm", 0)
-        chance_of_rain = hour_data.get("chance_of_rain", 0)
         
-        # Simple weather condition logic based on available data
-        if snow_cm > 0:
-            condition = "Snow"
-        elif precip_mm > 5:
-            condition = "Heavy Rain"
-        elif precip_mm > 1:
-            condition = "Rain"
-        elif precip_mm > 0:
-            condition = "Light Rain"
-        elif chance_of_rain > 70:
-            condition = "Cloudy"
-        else:
-            condition = "Clear"
-        
-        # Estimate humidity based on precipitation and rain chance
-        # Higher precipitation and rain chance = higher humidity
-        if precip_mm > 5:
-            humidity = 90
-        elif precip_mm > 1:
-            humidity = 80
-        elif precip_mm > 0:
-            humidity = 70
-        elif chance_of_rain > 70:
-            humidity = 65
-        elif chance_of_rain > 40:
-            humidity = 55
-        else:
-            humidity = 45
-        
-        # Store only the 3 requested fields
+        # Store the 3 requested fields with actual API data
         hourly_data[hour] = {
             "condition": condition,
             "humidity": humidity,

@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Download CSV from Supabase Storage and Load to PostgreSQL Database
+Load enriched collision data to PostgreSQL Database
 This script:
-1. Downloads the enriched CSV from Supabase Storage bucket
+1. Uses the locally generated collisions_enriched.csv file
 2. Converts CSV data to XML format (with hierarchical structure)
-3. Loads XML documents to PostgreSQL via XML Service GraphQL endpoint
+3. Loads XML documents to PostgreSQL via XML Service webhook endpoint
 """
 import os
 import sys
 import pandas as pd
 import requests
-from supabase import create_client, Client
 from dotenv import load_dotenv
 from datetime import datetime
 import time
@@ -22,9 +21,6 @@ if sys.platform == "win32":
 load_dotenv()
 
 # Configuration
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
 # Auto-detect if running inside or outside Docker
 # If running outside Docker (localhost), use localhost:5000
 # If running inside Docker, use xml-service:5000
@@ -36,25 +32,17 @@ XML_SERVICE_URL = os.getenv("XML_SERVICE_URL", default_xml_service_url)
 # Override if it's pointing to graphql (legacy config)
 if "/graphql" in XML_SERVICE_URL:
     XML_SERVICE_URL = XML_SERVICE_URL.replace("/graphql", "/api/webhook")
-BUCKET_NAME = "dataBucket"
-CSV_FILE_NAME = "collisions_weather.csv"
-LOCAL_CSV_PATH = "downloaded_collisions_weather.csv"
+
+LOCAL_CSV_PATH = "collisions_enriched.csv"
 BATCH_SIZE = 100  # Load 100 records at a time (reduced for reliability)
 
 print("=" * 70)
-print("📥 Supabase Storage to PostgreSQL Data Loader")
+print("📥 Enriched Collision Data to PostgreSQL Loader")
 print("=" * 70)
 
-# Validate environment variables
-if not SUPABASE_URL or not SUPABASE_KEY:
-    print("❌ Error: Missing SUPABASE_URL or SUPABASE_KEY")
-    exit(1)
-
 print(f"\n🔗 Configuration:")
-print(f"   Supabase URL: {SUPABASE_URL}")
 print(f"   XML Service: {XML_SERVICE_URL}")
-print(f"   Bucket: {BUCKET_NAME}")
-print(f"   File: {CSV_FILE_NAME}")
+print(f"   Local CSV: {LOCAL_CSV_PATH}")
 print(f"   Batch Size: {BATCH_SIZE} records")
 
 # Test XML Service connectivity
@@ -67,28 +55,17 @@ except Exception as e:
     print(f"   Make sure the XML Service is running at {XML_SERVICE_URL}")
     print(f"   Continuing anyway (automated pipeline)...")
 
-# Step 1: Download CSV from Supabase Storage
-print(f"\n📥 STEP 1: Downloading CSV from Supabase Storage...")
+# Step 1: Check for local enriched CSV file
+print(f"\n📥 STEP 1: Checking for local enriched CSV file...")
 
-try:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    print("✅ Connected to Supabase")
-    
-    # Download file
-    print(f"   Downloading '{CSV_FILE_NAME}' from bucket '{BUCKET_NAME}'...")
-    file_response = supabase.storage.from_(BUCKET_NAME).download(CSV_FILE_NAME)
-    
-    # Save to local file
-    with open(LOCAL_CSV_PATH, 'wb') as f:
-        f.write(file_response)
-    
-    file_size = os.path.getsize(LOCAL_CSV_PATH)
-    file_size_mb = file_size / (1024 * 1024)
-    print(f"✅ Downloaded successfully: {file_size_mb:.2f} MB ({file_size:,} bytes)")
-    
-except Exception as e:
-    print(f"❌ Failed to download from Supabase Storage: {e}")
+if not os.path.exists(LOCAL_CSV_PATH):
+    print(f"❌ Enriched CSV not found: {LOCAL_CSV_PATH}")
+    print(f"   Please run the enrich-weather step first to generate the enriched data.")
     exit(1)
+
+file_size = os.path.getsize(LOCAL_CSV_PATH)
+file_size_mb = file_size / (1024 * 1024)
+print(f"✅ Found enriched CSV: {file_size_mb:.2f} MB ({file_size:,} bytes)")
 
 # Step 2: Parse CSV
 print(f"\n📊 STEP 2: Parsing CSV data...")
@@ -129,7 +106,15 @@ def convert_row_to_collision(row):
         "vehicle_3": str(row.get("vehicle_3", "")) if pd.notna(row.get("vehicle_3")) else "",
         "vehicle_4": str(row.get("vehicle_4", "")) if pd.notna(row.get("vehicle_4")) else "",
         "vehicle_5": str(row.get("vehicle_5", "")) if pd.notna(row.get("vehicle_5")) else "",
-        "weather_condition": str(row.get("weather_condition", "")) if pd.notna(row.get("weather_condition")) else ""
+        # Weather data from enriched CSV (merged from weather_nyc_2025.csv)
+        "weather_condition": str(row.get("weather", "")) if pd.notna(row.get("weather")) else "",
+        "weather_detail": str(row.get("weather_detail", "")) if pd.notna(row.get("weather_detail")) else "",
+        "temperature_f": float(row.get("temp_fahrenheit", 0)) if pd.notna(row.get("temp_fahrenheit")) else None,
+        "temperature_c": float(row.get("temp_celsius", 0)) if pd.notna(row.get("temp_celsius")) else None,
+        "humidity": float(row.get("humidity_pct", 0)) if pd.notna(row.get("humidity_pct")) else None,
+        "precipitation": float(row.get("precipitation", 0)) if pd.notna(row.get("precipitation")) else None,
+        "wind_speed": float(row.get("wind_speed", 0)) if pd.notna(row.get("wind_speed")) else None,
+        "visibility": float(row.get("visibility_m", 0)) if pd.notna(row.get("visibility_m")) else None,
     }
 
 # Calculate number of batches
@@ -162,7 +147,7 @@ for batch_num in range(num_batches):
             XML_SERVICE_URL,
             json=payload,
             headers={"Content-Type": "application/json"},
-            timeout=120
+            timeout=300
         )
         
         if response.status_code == 200:

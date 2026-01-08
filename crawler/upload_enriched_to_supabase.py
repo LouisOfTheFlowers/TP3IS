@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 """
-Upload collision and weather data CSVs to Supabase Storage Bucket
-Uploads both raw collision data and weather data separately
+Upload raw collision data to Supabase Storage Bucket
+This is temporary data that gets merged with weather and then loaded to PostgreSQL
 """
 import os
 from supabase import create_client
@@ -17,13 +18,12 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 BUCKET_NAME = "dataBucket"
-FILES_TO_UPLOAD = ["collisions_raw.csv", "weather_data.csv"]
+RAW_FILE = "collisions_raw.csv"
 
 
 def ensure_bucket_exists():
     """Create bucket if it doesn't exist"""
     try:
-        # Try to get bucket info
         buckets = supabase.storage.list_buckets()
         bucket_names = [b.name for b in buckets]
         
@@ -34,52 +34,42 @@ def ensure_bucket_exists():
         else:
             print(f"✅ Bucket '{BUCKET_NAME}' already exists")
     except Exception as e:
-        print(f"⚠️ Bucket check/creation: {e}")
+        print(f"⚠️  Bucket check/creation: {e}")
 
 
-def upload_file(filename):
-    """Upload a CSV file to Supabase Storage"""
-    if not os.path.exists(filename):
-        print(f"❌ File '{filename}' not found")
+def upload_raw_collisions():
+    """Upload raw collision CSV to Supabase Storage"""
+    ensure_bucket_exists()
+    
+    if not os.path.exists(RAW_FILE):
+        print(f"❌ File '{RAW_FILE}' not found")
         return False
     
-    print(f"📤 Uploading '{filename}' to bucket '{BUCKET_NAME}'...")
+    file_size = os.path.getsize(RAW_FILE) / (1024 * 1024)
+    print(f"📤 Uploading '{RAW_FILE}' ({file_size:.2f} MB) to bucket '{BUCKET_NAME}'...")
     
     try:
         # Try to remove existing file first (upsert)
         try:
-            supabase.storage.from_(BUCKET_NAME).remove([filename])
+            supabase.storage.from_(BUCKET_NAME).remove([RAW_FILE])
         except:
-            pass  # File might not exist
+            pass
         
         # Upload file
-        with open(filename, "rb") as f:
+        with open(RAW_FILE, "rb") as f:
             supabase.storage.from_(BUCKET_NAME).upload(
-                filename,
+                RAW_FILE,
                 f,
                 {"content-type": "text/csv"}
             )
         
-        print(f"✅ Uploaded: {BUCKET_NAME}/{filename}")
+        print(f"✅ Uploaded raw collisions: {BUCKET_NAME}/{RAW_FILE}")
         return True
         
     except Exception as e:
-        print(f"❌ Upload failed for {filename}: {e}")
+        print(f"❌ Upload failed: {e}")
         return False
 
 
-def upload_all_files():
-    """Upload all required files to Supabase Storage"""
-    ensure_bucket_exists()
-    
-    success_count = 0
-    for filename in FILES_TO_UPLOAD:
-        if upload_file(filename):
-            success_count += 1
-    
-    print(f"\n✅ Uploaded {success_count}/{len(FILES_TO_UPLOAD)} files successfully")
-    return success_count == len(FILES_TO_UPLOAD)
-
-
 if __name__ == "__main__":
-    upload_all_files()
+    upload_raw_collisions()

@@ -85,6 +85,13 @@
     <xs:complexType name="WeatherType">
         <xs:sequence>
             <xs:element name="condition" type="xs:string" minOccurs="0"/>
+            <xs:element name="detail" type="xs:string" minOccurs="0"/>
+            <xs:element name="temperatureF" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="temperatureC" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="humidity" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="precipitation" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="windSpeed" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="visibility" type="xs:decimal" minOccurs="0"/>
         </xs:sequence>
     </xs:complexType>
     
