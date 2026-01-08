@@ -247,6 +247,34 @@ class AnalyticsCacheService:
         """
         
         return db_manager.execute_query(query, (limit,))
+    
+    def get_latest_collision_date(self) -> Optional[str]:
+        """
+        Get the most recent collision date in the database
+        Used to avoid re-scraping old data
+        """
+        query = f"""
+            WITH recent_docs AS (
+                SELECT xml_documento
+                FROM collision_documents
+                WHERE status = 'VALID'
+                ORDER BY data_criacao DESC
+                LIMIT 50
+            ),
+            dates AS (
+                SELECT 
+                    unnest(xpath('//col:collision/col:crashInfo/col:date/text()', xml_documento, {self.NS_ARRAY}))::text as date_val
+                FROM recent_docs
+            )
+            SELECT MAX(date_val) as latest_date
+            FROM dates
+            WHERE date_val IS NOT NULL AND date_val ~ '^\d{{4}}-\d{{2}}-\d{{2}}'
+        """
+        
+        result = db_manager.execute_query(query)
+        if result and result[0].get('latest_date'):
+            return result[0]['latest_date']
+        return None
 
 
 # Singleton instance

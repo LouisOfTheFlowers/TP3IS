@@ -28,11 +28,14 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 # Auto-detect if running inside or outside Docker
 # If running outside Docker (localhost), use localhost:5000
 # If running inside Docker, use xml-service:5000
-default_xml_service_url = "http://localhost:5000/graphql"
+default_xml_service_url = "http://localhost:5000/api/webhook"
 if os.path.exists("/.dockerenv"):  # Running inside Docker
-    default_xml_service_url = "http://xml-service:5000/graphql"
+    default_xml_service_url = "http://xml-service:5000/api/webhook"
 
 XML_SERVICE_URL = os.getenv("XML_SERVICE_URL", default_xml_service_url)
+# Override if it's pointing to graphql (legacy config)
+if "/graphql" in XML_SERVICE_URL:
+    XML_SERVICE_URL = XML_SERVICE_URL.replace("/graphql", "/api/webhook")
 BUCKET_NAME = "dataBucket"
 CSV_FILE_NAME = "collisions_weather.csv"
 LOCAL_CSV_PATH = "downloaded_collisions_weather.csv"
@@ -62,9 +65,7 @@ try:
 except Exception as e:
     print(f"⚠️  Warning: Cannot reach XML Service: {e}")
     print(f"   Make sure the XML Service is running at {XML_SERVICE_URL}")
-    response = input("   Continue anyway? (y/n): ")
-    if response.lower() != 'y':
-        exit(1)
+    print(f"   Continuing anyway (automated pipeline)...")
 
 # Step 1: Download CSV from Supabase Storage
 print(f"\n📥 STEP 1: Downloading CSV from Supabase Storage...")
@@ -152,51 +153,32 @@ for batch_num in range(num_batches):
         for _, row in batch_df.iterrows():
             collisions.append(convert_row_to_collision(row))
         
-        # Create GraphQL mutation
-        mutation = """
-        mutation ImportCollisions($data: [CollisionInput!]!) {
-            importCollisionsFromData(data: $data) {
-                requestId
-                status
-                documentId
-                error
-            }
-        }
-        """
-        
-        variables = {
-            "data": collisions
+        # Send REST request to webhook endpoint
+        payload = {
+            "collisions": collisions
         }
         
-        # Send GraphQL request
         response = requests.post(
             XML_SERVICE_URL,
-            json={"query": mutation, "variables": variables},
+            json=payload,
             headers={"Content-Type": "application/json"},
             timeout=120
         )
         
         if response.status_code == 200:
             result = response.json()
-            if "errors" in result:
-                error_msg = result['errors'][0] if result['errors'] else 'Unknown error'
-                print(f"   ❌ GraphQL errors: {error_msg}")
-                if 'message' in error_msg:
-                    print(f"      Message: {error_msg['message']}")
-                failed_batches += 1
+            if result.get("success"):
+                data = result.get("data", {})
+                print(f"   ✅ Loaded successfully")
+                print(f"      Request ID: {data.get('request_id')}")
+                print(f"      Document ID: {data.get('document_id')}")
+                print(f"      Status: {data.get('status')}")
+                successful_batches += 1
+                total_loaded += len(collisions)
             else:
-                data = result.get("data", {}).get("importCollisionsFromData", {})
-                status = data.get('status', 'UNKNOWN')
-                if status == "OK":
-                    print(f"   ✅ Loaded successfully")
-                    print(f"      Request ID: {data.get('requestId')}")
-                    print(f"      Document ID: {data.get('documentId')}")
-                    successful_batches += 1
-                    total_loaded += len(collisions)
-                else:
-                    print(f"   ❌ Failed with status: {status}")
-                    print(f"      Error: {data.get('error', 'No error message')}")
-                    failed_batches += 1
+                error = result.get("error", "Unknown error")
+                print(f"   ❌ Failed: {error}")
+                failed_batches += 1
         else:
             print(f"   ❌ HTTP {response.status_code}")
             print(f"      Response: {response.text[:500]}")

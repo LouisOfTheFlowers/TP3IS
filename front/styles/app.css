@@ -348,6 +348,39 @@ body {
   flex-wrap: wrap;
 }
 
+.pipeline-options {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface-hover);
+  border-radius: 8px;
+}
+
+.pipeline-options label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.pipeline-options input[type="number"] {
+  width: 100px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.pipeline-options input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
 /* ==================== ANALYTICS ==================== */
 .analytics-controls {
   background: var(--surface-color);

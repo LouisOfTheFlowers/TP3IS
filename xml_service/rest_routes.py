@@ -32,6 +32,28 @@ def get_statistics():
         }), 500
 
 
+@rest_api.route('/latest-collision-date', methods=['GET'])
+def get_latest_collision_date():
+    """
+    GET /api/latest-collision-date
+    Get the most recent collision date in the database
+    Used to avoid re-scraping old data
+    """
+    try:
+        latest_date = analytics_cache.get_latest_collision_date()
+        return jsonify({
+            'success': True,
+            'data': {
+                'latestDate': latest_date
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @rest_api.route('/weather-correlation', methods=['GET'])
 def get_weather_correlation():
     """

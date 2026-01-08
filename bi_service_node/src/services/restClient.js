@@ -121,6 +121,12 @@ const restClient = {
   getVehicleTypes: (limit = 15) => get("/vehicle-types", { limit }),
 
   /**
+   * Get the latest collision date in the database
+   * Used to avoid re-scraping old data
+   */
+  getLatestCollisionDate: () => get("/latest-collision-date"),
+
+  /**
    * Execute custom XPath query
    * @param {string} query - XPath expression
    * @param {number} limit - Result limit

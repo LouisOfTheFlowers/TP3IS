@@ -138,9 +138,13 @@ def main():
         
         # Step 1: Parse CSV to collision data format
         collisions = parse_csv_to_collisions()
-        if not collisions:
-            print("❌ No collision data to load")
+        if collisions is None:
+            print("❌ Failed to parse CSV file")
             return False
+        
+        if len(collisions) == 0:
+            print("✅ No new collision data to load (database is up to date)")
+            return True  # This is a success - nothing new to load
         
         # Step 2: Load data to database via XML Service
         success = load_to_database(collisions)

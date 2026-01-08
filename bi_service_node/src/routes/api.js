@@ -159,12 +159,15 @@ router.post("/load-data", async (req, res, next) => {
     const dataProcessorUrl =
       (process.env.DATA_PROCESSOR_URL || "http://data-processor:8001") +
       "/load-data";
-    console.log(`[Load Data] Calling ${dataProcessorUrl}`);
+
+    // Get limit from request body (default 100)
+    const limit = req.body.limit || 100;
+    console.log(`[Load Data] Calling ${dataProcessorUrl} with limit: ${limit}`);
 
     const response = await require("axios").post(
       dataProcessorUrl,
-      {},
-      { timeout: 120000 } // 2 minute timeout for data loading
+      { limit: limit },
+      { timeout: 300000 } // 5 minute timeout for data loading
     );
 
     res.json({
@@ -177,6 +180,25 @@ router.post("/load-data", async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: "Failed to load data: " + error.message,
+    });
+  }
+});
+
+// ============================================================
+// GET /api/latest-collision-date - Get latest collision date from DB
+// ============================================================
+router.get("/latest-collision-date", async (req, res, next) => {
+  try {
+    const data = await restClient.getLatestCollisionDate();
+    res.json({
+      success: true,
+      data: data,
+    });
+  } catch (error) {
+    console.error("[Latest Date Error]:", error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
     });
   }
 });

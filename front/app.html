@@ -188,6 +188,17 @@
                   <span class="step-status" id="load-status">Ready</span>
                 </div>
               </div>
+              <div class="pipeline-options">
+                <label for="record-limit">Records to fetch:</label>
+                <input
+                  type="number"
+                  id="record-limit"
+                  value="100"
+                  min="10"
+                  max="10000"
+                  step="10"
+                />
+              </div>
               <div class="button-group">
                 <button id="run-pipeline" class="btn-primary">
                   Run Full Pipeline

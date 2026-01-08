@@ -20,10 +20,10 @@ const utils = {
   // Show/hide loading overlay
   setLoading(isLoading, silent = false) {
     state.isLoading = isLoading;
-    
+
     const loadingOverlay = document.getElementById("loading-overlay");
     const updateIndicator = document.getElementById("update-indicator");
-    
+
     if (!silent) {
       // Show full loading overlay
       loadingOverlay.classList.toggle("active", isLoading);
@@ -58,12 +58,12 @@ const utils = {
   async apiCall(endpoint, options = {}) {
     const cacheKey = `${endpoint}_${JSON.stringify(options)}`;
     const now = Date.now();
-    
+
     // Check if we have valid cached data
     if (
-      state.cache[cacheKey] && 
-      state.lastFetch[cacheKey] && 
-      (now - state.lastFetch[cacheKey]) < CACHE_DURATION
+      state.cache[cacheKey] &&
+      state.lastFetch[cacheKey] &&
+      now - state.lastFetch[cacheKey] < CACHE_DURATION
     ) {
       console.log(`📦 Using cached data for ${endpoint}`);
       return state.cache[cacheKey];
@@ -83,21 +83,21 @@ const utils = {
       }
 
       const data = await response.json();
-      
+
       // Cache the response
       state.cache[cacheKey] = data;
       state.lastFetch[cacheKey] = now;
-      
+
       return data;
     } catch (error) {
       console.error(`API Error [${endpoint}]:`, error);
-      
+
       // Return cached data if available, even if expired
       if (state.cache[cacheKey]) {
         console.log(`⚠️ Using stale cached data for ${endpoint}`);
         return state.cache[cacheKey];
       }
-      
+
       throw error;
     }
   },
@@ -238,19 +238,24 @@ const dashboard = {
       }
 
       // Load all data in parallel for better performance
-      const [statsResponse, monthlyResponse, casualtiesResponse, collisionTypesResponse] = 
-        await Promise.all([
-          utils.apiCall("/statistics"),
-          utils.apiCall("/time-period?groupBy=month"),
-          utils.apiCall("/weather-correlation"),
-          utils.apiCall("/contributing-factors?limit=10")
-        ]);
+      const [
+        statsResponse,
+        monthlyResponse,
+        casualtiesResponse,
+        collisionTypesResponse,
+      ] = await Promise.all([
+        utils.apiCall("/statistics"),
+        utils.apiCall("/time-period?groupBy=month"),
+        utils.apiCall("/weather-correlation"),
+        utils.apiCall("/contributing-factors?limit=10"),
+      ]);
 
       // Extract data
       const stats = statsResponse.data || statsResponse;
       const monthlyData = monthlyResponse.data || monthlyResponse;
       const casualtiesData = casualtiesResponse.data || casualtiesResponse;
-      const collisionTypesData = collisionTypesResponse.data || collisionTypesResponse;
+      const collisionTypesData =
+        collisionTypesResponse.data || collisionTypesResponse;
 
       state.data.dashboard = stats;
 
@@ -259,8 +264,12 @@ const dashboard = {
 
       // Update charts without additional API calls
       this.createMonthlyChart(Array.isArray(monthlyData) ? monthlyData : []);
-      this.createCasualtiesChart(Array.isArray(casualtiesData) ? casualtiesData : []);
-      this.createCollisionTypesChart(Array.isArray(collisionTypesData) ? collisionTypesData : []);
+      this.createCasualtiesChart(
+        Array.isArray(casualtiesData) ? casualtiesData : []
+      );
+      this.createCollisionTypesChart(
+        Array.isArray(collisionTypesData) ? collisionTypesData : []
+      );
 
       if (!isSilent) {
         utils.showToast("Dashboard data loaded successfully", "success");
@@ -803,14 +812,86 @@ const admin = {
   },
 
   async runPipeline() {
-    utils.showToast(
-      "Full pipeline execution is not yet implemented",
-      "warning"
-    );
-    utils.addLog(
-      "Pipeline execution requested - feature coming soon",
-      "warning"
-    );
+    // Get the record limit from input
+    const limitInput = document.getElementById("record-limit");
+    const limit = limitInput ? parseInt(limitInput.value) || 100 : 100;
+
+    if (
+      !confirm(
+        `This will run the full data pipeline:\n1. Scrape up to ${limit} new collision records\n2. Enrich with weather data\n3. Upload to storage bucket\n4. Load to database\n\nThis may take a few minutes. Continue?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      utils.setLoading(true);
+      utils.addLog(
+        `🚀 Starting full pipeline (limit: ${limit} records)...`,
+        "info"
+      );
+
+      // Update UI status indicators
+      this.updateStepStatus("scrape-status", "active", "Running...");
+      this.updateStepStatus("enrich-status", "ready", "Pending");
+      this.updateStepStatus("upload-status", "ready", "Pending");
+      this.updateStepStatus("load-status", "ready", "Pending");
+
+      utils.addLog(
+        `📊 Step 1: Fetching up to ${limit} collision records from NYC Open Data...`,
+        "info"
+      );
+      utils.showToast("Fetching collision data...", "info");
+
+      // Call the load-data endpoint which runs the full pipeline
+      const response = await fetch(`${API_BASE}/load-data`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: limit }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update all steps to complete
+        this.updateStepStatus("scrape-status", "success", "Complete");
+        this.updateStepStatus("enrich-status", "success", "Complete");
+        this.updateStepStatus("upload-status", "success", "Complete");
+        this.updateStepStatus("load-status", "success", "Complete");
+
+        utils.addLog("✅ Pipeline completed successfully!", "success");
+
+        if (result.details && result.details.steps_completed) {
+          result.details.steps_completed.forEach((step) => {
+            utils.addLog(`   ✓ ${step}`, "success");
+          });
+        }
+
+        utils.showToast(
+          "Pipeline completed! Data loaded successfully.",
+          "success"
+        );
+
+        // Refresh database stats
+        await this.loadDbStats();
+
+        // If we're on the dashboard, reload it
+        if (state.currentPage === "dashboard") {
+          await dashboard.load(true);
+        }
+      } else {
+        throw new Error(result.message || "Pipeline failed");
+      }
+    } catch (error) {
+      console.error("Pipeline error:", error);
+      utils.addLog(`❌ Pipeline failed: ${error.message}`, "error");
+      utils.showToast(`Pipeline failed: ${error.message}`, "error");
+
+      // Mark failed step
+      this.updateStepStatus("scrape-status", "error", "Failed");
+    } finally {
+      utils.setLoading(false);
+    }
   },
 
   async loadDataOnly() {
@@ -860,8 +941,8 @@ const connectionMonitor = {
     try {
       // Use a simple fetch without going through apiCall to avoid caching
       const response = await fetch(`${API_BASE}/health`, {
-        method: 'GET',
-        cache: 'no-cache'
+        method: "GET",
+        cache: "no-cache",
       });
       this.setStatus(response.ok);
     } catch (error) {
