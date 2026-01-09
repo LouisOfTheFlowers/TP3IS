@@ -22,12 +22,11 @@ def get_date_range_from_collisions():
             print("❌ No collision data found")
             return None, None
         
-        # Parse dates and filter out 2026 data
+        # Parse dates
         df['crash_date'] = pd.to_datetime(df['crash_date'])
-        df = df[df['crash_date'] < '2026-01-01']  # Only 2025 and earlier
         
         if len(df) == 0:
-            print("❌ No collision data from 2025 or earlier")
+            print("❌ No collision data found")
             return None, None
         
         min_date = df['crash_date'].min()

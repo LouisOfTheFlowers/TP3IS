@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Weather Data Fetcher for NYC - Full Year 2025
-Downloads hourly weather data for every day in 2025 and saves to CSV.
+Weather Data Fetcher for NYC - 2024, 2025, and 2026 (up to Jan 4)
+Downloads hourly weather data and saves to CSV.
 Uses Open-Meteo API (free, no key required, historical data available)
 """
 import requests
@@ -27,11 +27,11 @@ BATCH_SIZE = 30  # Days per request (Open-Meteo allows large date ranges)
 OUTPUT_FILE = "weather_nyc_2025.csv"
 
 print("=" * 70)
-print("🌦️  NYC Weather Data Fetcher - Full Year 2025 (Hourly)")
+print("🌦️  NYC Weather Data Fetcher - Multi-Year (Hourly)")
 print("=" * 70)
 print(f"📍 Location: New York City ({NYC_LAT}, {NYC_LON})")
-print(f"📅 Period: January 1, 2025 to December 31, 2025")
-print(f"⏰ Interval: Hourly (8,760 records)")
+print(f"📅 Period: 2024 (full year), 2025 (full year), 2026 (Jan 1-4)")
+print(f"⏰ Interval: Hourly")
 print(f"💾 Output: {OUTPUT_FILE}")
 print("=" * 70)
 
@@ -213,39 +213,55 @@ def get_simplified_condition(condition: str, precipitation: float, snowfall: flo
 
 
 def main():
-    """Main function to fetch all 2025 weather data"""
+    """Main function to fetch weather data for 2024, 2025, and 2026 (up to Jan 4)"""
     
-    # Define date range for 2025
-    start = datetime(2025, 1, 1)
-    end = datetime(2025, 12, 31)
-    
-    # Generate batches (Open-Meteo can handle large ranges, but we'll batch for progress tracking)
-    batches = []
-    current = start
-    while current <= end:
-        batch_end = min(current + timedelta(days=BATCH_SIZE - 1), end)
-        batches.append((current.strftime("%Y-%m-%d"), batch_end.strftime("%Y-%m-%d")))
-        current = batch_end + timedelta(days=1)
-    
-    print(f"\n📦 Fetching data in {len(batches)} batches of ~{BATCH_SIZE} days each...")
-    print("-" * 70)
+    # Define date ranges for multiple years
+    date_ranges = [
+        (datetime(2024, 1, 1), datetime(2024, 12, 31)),  # Full year 2024
+        (datetime(2025, 1, 1), datetime(2025, 12, 31)),  # Full year 2025
+        (datetime(2026, 1, 1), datetime(2026, 1, 4))     # 2026 up to Jan 4
+    ]
     
     all_records = []
     
-    for idx, (batch_start, batch_end) in enumerate(batches, 1):
-        print(f"\n[{idx}/{len(batches)}] 🌦️  Fetching {batch_start} to {batch_end}...")
+    for year_start, year_end in date_ranges:
+        year = year_start.year
+        print(f"\n{'='*70}")
+        print(f"📅 Processing Year: {year}")
+        if year == 2026:
+            print(f"   (January 1-4 only)")
+        print(f"{'='*70}")
         
-        records = fetch_weather_batch(batch_start, batch_end)
+        start = year_start
+        end = year_end
+        start = year_start
+        end = year_end
+    
+        # Generate batches (Open-Meteo can handle large ranges, but we'll batch for progress tracking)
+        batches = []
+        current = start
+        while current <= end:
+            batch_end = min(current + timedelta(days=BATCH_SIZE - 1), end)
+            batches.append((current.strftime("%Y-%m-%d"), batch_end.strftime("%Y-%m-%d")))
+            current = batch_end + timedelta(days=1)
         
-        if records:
-            all_records.extend(records)
-            print(f"   ✅ Got {len(records)} hourly records")
-        else:
-            print(f"   ❌ Failed to fetch batch {batch_start} to {batch_end}")
+        print(f"\n📦 Fetching data in {len(batches)} batches of ~{BATCH_SIZE} days each...")
+        print("-" * 70)
         
-        # Small delay between requests to be nice to the API
-        if idx < len(batches):
-            time.sleep(0.5)
+        for idx, (batch_start, batch_end) in enumerate(batches, 1):
+            print(f"\n[{idx}/{len(batches)}] 🌦️  Fetching {batch_start} to {batch_end}...")
+            
+            records = fetch_weather_batch(batch_start, batch_end)
+            
+            if records:
+                all_records.extend(records)
+                print(f"   ✅ Got {len(records)} hourly records")
+            else:
+                print(f"   ❌ Failed to fetch batch {batch_start} to {batch_end}")
+            
+            # Small delay between requests to be nice to the API
+            if idx < len(batches):
+                time.sleep(0.5)
     
     print("\n" + "=" * 70)
     print(f"📊 Total records fetched: {len(all_records)}")
@@ -276,7 +292,7 @@ def main():
     
     # Print statistics
     print("\n" + "=" * 70)
-    print("📈 Weather Statistics for NYC 2025:")
+    print("📈 Weather Statistics for NYC (2024, 2025, 2026):")
     print("-" * 70)
     
     condition_counts = df["simple_condition"].value_counts()
@@ -288,6 +304,19 @@ def main():
     print(f"\n🌡️  Temperature Range: {df['temperature_f'].min():.1f}°F to {df['temperature_f'].max():.1f}°F")
     print(f"🌧️  Total Precipitation Days: {df[df['precipitation_mm'] > 0]['date'].nunique()}")
     print(f"❄️  Total Snow Days: {df[df['snowfall_cm'] > 0]['date'].nunique()}")
+    
+    # Yearly breakdown
+    df["year"] = pd.to_datetime(df["date"]).dt.year
+    yearly_stats = df.groupby("year").agg({
+        "precipitation_mm": "sum",
+        "date": "nunique"
+    })
+    
+    print("\n📅 Yearly Summary:")
+    for year, stats in yearly_stats.iterrows():
+        days = stats["date"]
+        precip = stats["precipitation_mm"]
+        print(f"   {year}: {days} days, {precip:.1f}mm total precipitation")
     
     # Monthly breakdown
     df["month"] = pd.to_datetime(df["date"]).dt.month

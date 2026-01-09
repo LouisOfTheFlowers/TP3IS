@@ -32,12 +32,10 @@ if db_stats:
     print(f"📊 Current database has {current_total} collision records")
 
 # Build query parameters - use offset based on current count
-# Filter: Only get data from 2025 and earlier (exclude 2026)
 PARAMS = {
     "$limit": RECORD_LIMIT,   
     "$order": "crash_date DESC",
-    "$offset": current_total,  # Skip records we already have
-    "$where": "crash_date < '2026-01-01T00:00:00.000'"  # Only 2025 and earlier
+    "$offset": current_total  # Skip records we already have
 }
 
 print(f"📥 Fetching {RECORD_LIMIT} new records (offset: {current_total})...")
