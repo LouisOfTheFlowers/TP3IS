@@ -99,7 +99,7 @@ services:
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
-      - XML_SERVICE_URL=http://xml-service:5000/graphql
+      - XML_SERVICE_URL=http://xml-service:5000/api
       - XMLRPC_PORT=8000
       - HTTP_PORT=8001
       - XMLRPC_HOST=0.0.0.0

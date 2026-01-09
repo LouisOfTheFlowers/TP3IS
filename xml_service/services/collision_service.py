@@ -9,7 +9,6 @@ from datetime import datetime
 from database.connection import db_manager
 from xml_processing.mapper import xml_mapper
 from xml_processing.validator import xml_validator
-from services.duplicate_checker import duplicate_checker
 from config.settings import Config
 
 
@@ -19,7 +18,6 @@ class CollisionService:
     def __init__(self):
         self.mapper = xml_mapper
         self.validator = xml_validator
-        self.duplicate_checker = duplicate_checker
     
     def create_xml_document(
         self, 
@@ -87,39 +85,28 @@ class CollisionService:
     
     def process_and_store_collisions(
         self, 
-        collisions: List[Dict[str, Any]],
-        skip_duplicates: bool = True
+        collisions: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
-        Full pipeline: check duplicates, create XML, validate, store, notify webhook
+        Full pipeline: create XML, validate, store, notify webhook
+        
+        Note: Duplicate checking should be done BEFORE scraping/sending data here.
+        Use the /api/existing-collision-keys endpoint to get existing keys,
+        then filter your data before calling this method.
         
         Args:
-            collisions: List of collision data
-            skip_duplicates: If True, filter out duplicate collisions before processing
+            collisions: List of collision data (already filtered for duplicates)
             
         Returns:
             Result dictionary with status and details
         """
-        # Check for duplicates if requested
-        duplicate_stats = None
-        if skip_duplicates:
-            new_collisions, duplicate_collisions, stats = self.duplicate_checker.check_for_duplicates(collisions)
-            duplicate_stats = stats
-            
-            print(f"[Duplicate Check] Total: {stats['total']}, New: {stats['new']}, Duplicates: {stats['duplicates']}")
-            
-            if stats['new'] == 0:
-                # All collisions are duplicates
-                return {
-                    "request_id": None,
-                    "status": "ALL_DUPLICATES",
-                    "document_id": None,
-                    "error": "All collision records already exist in the database",
-                    "duplicate_stats": duplicate_stats
-                }
-            
-            # Use only new collisions
-            collisions = new_collisions
+        if not collisions:
+            return {
+                "request_id": None,
+                "status": "NO_DATA",
+                "document_id": None,
+                "error": "No collision records to process"
+            }
         
         # Create and validate XML
         request_id, xml_content, is_valid, validation_error = self.create_xml_document(collisions)
@@ -131,8 +118,7 @@ class CollisionService:
                 "request_id": request_id,
                 "status": "ERRO_VALIDACAO",
                 "document_id": None,
-                "error": validation_error,
-                "duplicate_stats": duplicate_stats
+                "error": validation_error
             }
         
         # Save to database
@@ -150,8 +136,7 @@ class CollisionService:
                 "request_id": request_id,
                 "status": "ERRO_PERSISTENCIA",
                 "document_id": None,
-                "error": persist_status,
-                "duplicate_stats": duplicate_stats
+                "error": persist_status
             }
         
         # Notify webhook about success
@@ -161,8 +146,7 @@ class CollisionService:
             "request_id": request_id,
             "status": "OK",
             "document_id": document_id,
-            "error": None,
-            "duplicate_stats": duplicate_stats
+            "error": None
         }
     
     def _notify_webhook(self, request_id: str, status: str, document_id: Optional[int]):

@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify
 from services.analytics_cache import analytics_cache
 from services.xpath_query_service import xpath_query_service
 from services.collision_service import collision_service
-from services.duplicate_checker import duplicate_checker
+from database.connection import db_manager
 
 # Create Blueprint
 api = Blueprint('api', __name__, url_prefix='/api')
@@ -352,60 +352,69 @@ def import_csv():
 
 
 # ============================================================
-# DUPLICATE DETECTION ENDPOINTS
+# COLLISION KEY LOOKUP ENDPOINT (for pre-scrape duplicate prevention)
 # ============================================================
 
-@api.route('/duplicates/check', methods=['POST'])
-def check_duplicates():
+@api.route('/existing-collision-keys', methods=['GET'])
+def get_existing_collision_keys():
     """
-    POST /api/duplicates/check
-    Check which collisions are duplicates without storing them
+    GET /api/existing-collision-keys
+    Get all existing collision date+time keys from the database.
     
-    Body:
-    {
-        "collisions": [...]
-    }
+    This endpoint is used by the scraper BEFORE fetching data to know
+    which records already exist in the database, allowing it to skip
+    duplicates during the scraping process itself.
+    
+    Returns:
+        List of collision keys in format "YYYY-MM-DD|HH:MM"
     """
     try:
-        data = request.get_json()
+        namespace = "http://collision.data/schema"
+        ns_array = f"ARRAY[ARRAY['col', '{namespace}']]"
         
-        if not data or "collisions" not in data:
-            return jsonify({
-                "success": False,
-                "error": "No collision data provided"
-            }), 400
+        query = f"""
+            WITH collision_data AS (
+                SELECT 
+                    unnest(xpath('//col:collision/col:crashInfo/col:date/text()', 
+                        xml_documento::xml, 
+                        {ns_array}))::text as crash_date,
+                    unnest(xpath('//col:collision/col:crashInfo/col:time/text()', 
+                        xml_documento::xml, 
+                        {ns_array}))::text as crash_time
+                FROM collision_documents
+                WHERE status = 'VALID'
+            )
+            SELECT DISTINCT crash_date, crash_time
+            FROM collision_data
+            WHERE crash_date IS NOT NULL
+        """
         
-        new_collisions, duplicate_collisions, stats = duplicate_checker.check_for_duplicates(data["collisions"])
+        results = db_manager.execute_query(query)
+        
+        # Build set of keys in format "date|time"
+        keys = []
+        for row in results:
+            date = str(row.get('crash_date', '')).strip()
+            time = str(row.get('crash_time', '')).strip()
+            
+            # Normalize time format (handle both HH:MM and H:MM)
+            if time and ":" in time:
+                parts = time.split(":")
+                hour = int(parts[0]) if parts[0].isdigit() else 0
+                minute = int(parts[1]) if parts[1].isdigit() else 0
+                time = f"{hour:02d}:{minute:02d}"
+            
+            key = f"{date}|{time}"
+            keys.append(key)
         
         return jsonify({
             "success": True,
             "data": {
-                "statistics": stats,
-                "new_count": len(new_collisions),
-                "duplicate_count": len(duplicate_collisions),
-                "duplicates": duplicate_collisions[:10]  # Return first 10 duplicates as sample
+                "total_keys": len(keys),
+                "keys": keys
             }
         })
         
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-
-@api.route('/duplicates/stats', methods=['GET'])
-def get_duplicate_stats():
-    """
-    GET /api/duplicates/stats
-    Get statistics about duplicates in the database
-    """
-    try:
-        stats = duplicate_checker.get_duplicate_statistics()
-        return jsonify({
-            "success": True,
-            "data": stats
-        })
     except Exception as e:
         return jsonify({
             "success": False,

@@ -29,9 +29,13 @@ if os.path.exists("/.dockerenv"):  # Running inside Docker
     default_xml_service_url = "http://xml-service:5000/api/webhook"
 
 XML_SERVICE_URL = os.getenv("XML_SERVICE_URL", default_xml_service_url)
-# Override if it's pointing to graphql (legacy config)
+# Override if it's pointing to graphql or just /api (legacy config)
 if "/graphql" in XML_SERVICE_URL:
     XML_SERVICE_URL = XML_SERVICE_URL.replace("/graphql", "/api/webhook")
+elif XML_SERVICE_URL.endswith("/api"):
+    XML_SERVICE_URL = XML_SERVICE_URL + "/webhook"
+elif not XML_SERVICE_URL.endswith("/webhook"):
+    XML_SERVICE_URL = XML_SERVICE_URL.rstrip("/") + "/api/webhook"
 
 LOCAL_CSV_PATH = "collisions_enriched.csv"
 BATCH_SIZE = 100  # Load 100 records at a time (reduced for reliability)

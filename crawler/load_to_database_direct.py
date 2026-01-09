@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-XML_SERVICE_URL = os.getenv("XML_SERVICE_URL", "http://xml-service:5000/graphql")
+XML_SERVICE_URL = os.getenv("XML_SERVICE_URL", "http://xml-service:5000/api/webhook")
 FILE_NAME = "collisions_weather.csv"
 
 
@@ -72,30 +72,19 @@ def parse_csv_to_collisions():
 
 
 def load_to_database(collisions):
-    """Send collision data to XML Service via GraphQL mutation"""
+    """Send collision data to XML Service via REST API webhook"""
     print(f"💾 Loading {len(collisions)} collision records to database via XML Service...")
     
-    # GraphQL mutation
-    mutation = """
-    mutation ImportCollisions($data: [CollisionInput!]!) {
-        importCollisionsFromData(data: $data) {
-            requestId
-            status
-            documentId
-            error
-        }
-    }
-    """
-    
-    variables = {
-        "data": collisions
+    # Prepare data for webhook
+    payload = {
+        "collisions": collisions
     }
     
     try:
-        print(f"🔗 Sending GraphQL request to: {XML_SERVICE_URL}")
+        print(f"🔗 Sending request to: {XML_SERVICE_URL}")
         response = requests.post(
             XML_SERVICE_URL,
-            json={"query": mutation, "variables": variables},
+            json=payload,
             headers={"Content-Type": "application/json"},
             timeout=120
         )
@@ -105,14 +94,14 @@ def load_to_database(collisions):
         if response.status_code == 200:
             result = response.json()
             
-            if "errors" in result:
-                print(f"❌ GraphQL errors: {result['errors']}")
+            if not result.get("success"):
+                print(f"❌ API error: {result.get('error')}")
                 return False
             
-            data = result.get("data", {}).get("importCollisionsFromData", {})
+            data = result.get("data", {})
             print(f"✅ Data loaded successfully!")
-            print(f"   Request ID: {data.get('requestId')}")
-            print(f"   Document ID: {data.get('documentId')}")
+            print(f"   Request ID: {data.get('request_id')}")
+            print(f"   Document ID: {data.get('document_id')}")
             print(f"   Status: {data.get('status')}")
             
             if data.get("error"):

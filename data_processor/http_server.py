@@ -475,7 +475,7 @@ def load_data():
                 'weather_distribution': weather_dist
             },
             'steps_completed': [
-                f'Fetched {total_limit} collision records from NYC Open Data',
+                f'Fetched {total_records} collision records from NYC Open Data',
                 'Enriched records with accurate hourly weather data',
                 'Uploaded to Supabase Storage',
                 'Loaded to PostgreSQL database'

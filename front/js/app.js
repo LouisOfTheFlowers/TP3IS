@@ -772,7 +772,6 @@ const xpathQueries = {
 // ==================== ADMIN PAGE ====================
 const admin = {
   async load() {
-    await this.loadDbStats();
     utils.updateLogs();
 
     // Set up event listeners
@@ -788,25 +787,6 @@ const admin = {
     document
       .getElementById("clear-logs")
       ?.addEventListener("click", () => this.clearLogs());
-  },
-
-  async loadDbStats() {
-    try {
-      const stats = await utils.apiCall("/statistics");
-
-      document.getElementById("db-xml-count").textContent = utils.formatNumber(
-        stats.totalDocuments || 0
-      );
-      document.getElementById("db-record-count").textContent =
-        utils.formatNumber(stats.totalCollisions || 0);
-      document.getElementById("db-last-update").textContent = stats.lastUpdate
-        ? utils.formatDate(stats.lastUpdate)
-        : "N/A";
-      document.getElementById("db-size").textContent =
-        stats.databaseSize || "N/A";
-    } catch (error) {
-      console.error("DB stats error:", error);
-    }
   },
 
   async runPipeline() {
@@ -870,9 +850,6 @@ const admin = {
           "success"
         );
 
-        // Refresh database stats
-        await this.loadDbStats();
-
         // If we're on the dashboard, reload it
         if (state.currentPage === "dashboard") {
           await dashboard.load(true);
@@ -905,9 +882,6 @@ const admin = {
       utils.addLog("Data loaded successfully", "success");
       this.updateStepStatus("load-status", "success", "Complete");
       utils.showToast("Data loaded successfully", "success");
-
-      // Refresh stats
-      await this.loadDbStats();
     } catch (error) {
       console.error("Load data error:", error);
       utils.addLog(`Load failed: ${error.message}`, "error");

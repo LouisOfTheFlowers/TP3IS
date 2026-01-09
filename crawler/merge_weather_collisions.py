@@ -73,12 +73,17 @@ df_collisions["merge_hour"] = df_collisions["crash_time"].apply(extract_hour)
 valid_hours = df_collisions["merge_hour"].notna().sum()
 print(f"   ✅ {valid_hours}/{len(df_collisions)} records have valid hours")
 
-# Filter collisions to 2025 only (weather data is for 2025)
-df_collisions_2025 = df_collisions[
-    (df_collisions["merge_date"] >= "2025-01-01") & 
-    (df_collisions["merge_date"] <= "2025-12-31")
+# Get weather date range to filter collisions appropriately
+weather_min_date = df_weather['date'].min()
+weather_max_date = df_weather['date'].max()
+print(f"   📅 Weather data covers: {weather_min_date} to {weather_max_date}")
+
+# Filter collisions to weather data range (2024-01-01 to 2026-01-04)
+df_collisions_filtered = df_collisions[
+    (df_collisions["merge_date"] >= weather_min_date) & 
+    (df_collisions["merge_date"] <= weather_max_date)
 ].copy()
-print(f"   ✅ {len(df_collisions_2025)} collisions are from 2025")
+print(f"   ✅ {len(df_collisions_filtered)} collisions are within weather data range")
 
 # ============================================================================
 # Prepare weather data for merging
@@ -120,7 +125,7 @@ print("\n🔗 Merging datasets...")
 
 # Merge on date and hour
 df_merged = pd.merge(
-    df_collisions_2025,
+    df_collisions_filtered,
     df_weather_merge,
     on=["merge_date", "merge_hour"],
     how="left"
