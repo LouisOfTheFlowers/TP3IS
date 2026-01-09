@@ -163,7 +163,7 @@
 
           <div class="admin-sections">
             <!-- Pipeline Control -->
-            <div class="admin-card">
+            <div class="admin-card full-width">
               <h3>Data Pipeline</h3>
               <p>Control the data collection and processing pipeline</p>
               <div class="pipeline-steps">
@@ -203,38 +203,7 @@
                 <button id="run-pipeline" class="btn-primary">
                   Run Full Pipeline
                 </button>
-                <button id="load-only" class="btn-secondary">
-                  Load to DB Only
-                </button>
               </div>
-            </div>
-
-            <!-- Database Info -->
-            <div class="admin-card">
-              <h3>Database Status</h3>
-              <p>Current database statistics and health</p>
-              <div class="db-stats">
-                <div class="db-stat">
-                  <span class="label">XML Documents:</span>
-                  <span class="value" id="db-xml-count">--</span>
-                </div>
-                <div class="db-stat">
-                  <span class="label">Total Records:</span>
-                  <span class="value" id="db-record-count">--</span>
-                </div>
-                <div class="db-stat">
-                  <span class="label">Last Updated:</span>
-                  <span class="value" id="db-last-update">--</span>
-                </div>
-                <div class="db-stat">
-                  <span class="label">Database Size:</span>
-                  <span class="value" id="db-size">--</span>
-                </div>
-              </div>
-              <button id="refresh-db-stats" class="btn-secondary">
-                <span class="icon">🔄</span>
-                Refresh Stats
-              </button>
             </div>
 
             <!-- System Logs -->

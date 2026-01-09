@@ -388,7 +388,7 @@ const dashboard = {
     if (msgDiv) msgDiv.remove();
 
     state.charts.casualties = new Chart(ctx, {
-      type: "line",
+      type: "bar",
       data: {
         labels: data.map(
           (d) => d.weather_condition || d.condition || d.weather || "Unknown"
@@ -399,18 +399,16 @@ const dashboard = {
             data: data.map(
               (d) => parseInt(d.total_killed || d.fatalities) || 0
             ),
+            backgroundColor: "rgba(239, 68, 68, 0.8)",
             borderColor: "rgba(239, 68, 68, 1)",
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            tension: 0.4,
-            fill: true,
+            borderWidth: 1,
           },
           {
             label: "Injuries",
             data: data.map((d) => parseInt(d.total_injured || d.injuries) || 0),
+            backgroundColor: "rgba(245, 158, 11, 0.8)",
             borderColor: "rgba(245, 158, 11, 1)",
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            tension: 0.4,
-            fill: true,
+            borderWidth: 1,
           },
         ],
       },
