@@ -201,11 +201,15 @@ def execute_xpath_short():
         # Execute the XPath query - returns list of dicts with document_id and result
         results = xpath_query_service.execute_xpath(xpath_query)
         
+        # Count actual XML results
+        total_results = sum(len(r.get('result', [])) for r in results)
+        print(f"[XML Service /xpath] XPath returned {len(results)} documents with {total_results} total results")
+        
         # Limit results if specified
         if limit and len(results) > limit:
             results = results[:limit]
         
-        print(f"[XML Service /xpath] XPath returned {len(results)} results")
+        print(f"[XML Service /xpath] Returning {len(results)} documents after limit")
             
         return jsonify({
             'success': True,
@@ -249,11 +253,15 @@ def execute_xpath():
         # Execute the XPath query - returns list of dicts with document_id and result
         results = xpath_query_service.execute_xpath(xpath_query)
         
+        # Count actual XML results
+        total_results = sum(len(r.get('result', [])) for r in results)
+        print(f"[XML Service] XPath returned {len(results)} documents with {total_results} total results")
+        
         # Limit results if specified
         if limit and len(results) > limit:
             results = results[:limit]
         
-        print(f"[XML Service] XPath returned {len(results)} results")
+        print(f"[XML Service] Returning {len(results)} documents after limit")
             
         return jsonify({
             'success': True,

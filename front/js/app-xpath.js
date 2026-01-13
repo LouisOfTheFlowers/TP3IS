@@ -10,34 +10,64 @@ export const xpathQueries = {
   // Predefined queries with proper namespaces
   queries: {
     1: {
-      query:
-        "//col:collision[col:weather/col:condition[contains(text(), 'Rain') or contains(text(), 'Snow') or contains(text(), 'Fog')]]",
+      query: "//col:collision[col:weather/col:condition[text()]]",
       name: "Weather-Related Collisions",
-      description:
-        "Find all collisions that occurred during rain, snow, or fog conditions",
+      description: "Find all collisions with weather data available",
     },
     2: {
       query:
-        "//col:collision[col:weather/col:condition[not(contains(text(), 'Rain')) and not(contains(text(), 'Snow')) and not(contains(text(), 'Fog'))]]",
-      name: "Non-Weather Collisions",
-      description:
-        "Find all collisions that occurred in clear or other conditions",
+        "//col:collision[col:casualties/col:personsInjured[number(text()) > 0]]",
+      name: "Collisions with Injuries",
+      description: "Find all collisions where people were injured",
     },
     3: {
-      query: "//col:collision[count(col:vehicles/col:vehicle) >= 3]",
+      query: "//col:collision[count(col:vehicles/col:vehicle) >= 2]",
       name: "Multi-Vehicle Accidents",
-      description: "Find accidents involving 3 or more vehicles",
+      description: "Find accidents involving 2 or more vehicles",
     },
     4: {
       query:
-        "//col:collision[col:crashInfo/col:time[substring(text(), 1, 2) >= '18' or substring(text(), 1, 2) < '06']]",
-      name: "Night-Time Collisions",
-      description: "Find collisions that occurred between 6 PM and 6 AM",
+        "//col:collision[col:crashInfo/col:time[substring(text(), 1, 2) = '18' or substring(text(), 1, 2) = '19' or substring(text(), 1, 2) = '20' or substring(text(), 1, 2) = '21' or substring(text(), 1, 2) = '22' or substring(text(), 1, 2) = '23']]",
+      name: "Evening Collisions",
+      description: "Find collisions that occurred between 6 PM and midnight",
     },
     5: {
-      query: "//col:collision[col:casualties/col:personsKilled > 0]",
+      query:
+        "//col:collision[col:casualties/col:personsKilled[number(text()) > 0]]",
       name: "Fatal Accidents",
       description: "Find all accidents with fatalities",
+    },
+    6: {
+      query:
+        "//col:collision[col:casualties/col:pedestriansInjured[number(text()) > 0] or col:casualties/col:pedestriansKilled[number(text()) > 0]]",
+      name: "Pedestrian Incidents",
+      description:
+        "Find collisions involving pedestrian injuries or fatalities",
+    },
+    7: {
+      query:
+        "//col:collision[col:casualties/col:cyclistsInjured[number(text()) > 0] or col:casualties/col:cyclistsKilled[number(text()) > 0]]",
+      name: "Cyclist Incidents",
+      description: "Find collisions involving cyclist injuries or fatalities",
+    },
+    8: {
+      query:
+        "//col:collision[col:casualties/col:personsInjured[number(text()) >= 3] or col:casualties/col:personsKilled[number(text()) >= 2]]",
+      name: "High Casualty Events",
+      description: "Find serious incidents with 3+ injuries or 2+ fatalities",
+    },
+    9: {
+      query:
+        "//col:collision[col:weather/col:precipitation[number(text()) > 0]]",
+      name: "Rainy Conditions",
+      description:
+        "Find collisions that occurred during rainfall (precipitation > 0)",
+    },
+    10: {
+      query:
+        "//col:collision[col:weather/col:temperatureF[number(text()) > 85]]",
+      name: "Hot Weather Collisions",
+      description: "Find collisions during hot weather (temperature > 85°F)",
     },
   },
 
@@ -52,25 +82,6 @@ export const xpathQueries = {
         this.runPredefinedQuery(queryNum);
       });
     });
-
-    // Set up custom query execution
-    const executeBtn = document.getElementById("execute-xpath");
-    if (executeBtn) {
-      executeBtn.addEventListener("click", () => {
-        console.log("[XPath] Execute custom query button clicked");
-        this.runCustomQuery();
-      });
-    }
-
-    // Allow Enter key in textarea to execute query
-    const xpathInput = document.getElementById("xpath-input");
-    if (xpathInput) {
-      xpathInput.addEventListener("keydown", (e) => {
-        if (e.ctrlKey && e.key === "Enter") {
-          this.runCustomQuery();
-        }
-      });
-    }
   },
 
   runPredefinedQuery(queryNum) {
@@ -82,24 +93,8 @@ export const xpathQueries = {
 
     console.log("[XPath] Running predefined query:", queryInfo.name);
 
-    // Set the query in the textarea
-    document.getElementById("xpath-input").value = queryInfo.query;
-
     // Execute the query
     this.executeQuery(queryInfo.query, 100);
-  },
-
-  runCustomQuery() {
-    const query = document.getElementById("xpath-input").value.trim();
-    const limit = parseInt(document.getElementById("xpath-limit").value) || 100;
-
-    if (!query) {
-      this.showToast("Please enter an XPath query", "warning");
-      return;
-    }
-
-    console.log("[XPath] Running custom query:", query);
-    this.executeQuery(query, limit);
   },
 
   async executeQuery(query, limit) {
@@ -179,9 +174,18 @@ export const xpathQueries = {
     }
 
     const data = result.data || [];
-    const resultCount = data.length;
+    // Count actual XML results, not just documents
+    const resultCount = data.reduce(
+      (sum, item) => sum + (item.result?.length || 0),
+      0
+    );
 
-    console.log("[XPath] Displaying results, count:", resultCount);
+    console.log(
+      "[XPath] Displaying results, count:",
+      resultCount,
+      "documents:",
+      data.length
+    );
 
     // Display stats
     statsContainer.innerHTML = `
@@ -213,22 +217,51 @@ export const xpathQueries = {
 
     // Process results - data is array of {document_id, result}
     let resultsHtml = '<div class="xpath-results-grid">';
+    let actualResultCount = 0;
 
     data.forEach((item, index) => {
       const documentId = item.document_id || "N/A";
       const xmlResults = item.result || [];
 
+      console.log(
+        `[XPath] Document ${documentId} has ${xmlResults.length} results`
+      );
+
       // Each result array contains XML strings
       xmlResults.forEach((xmlString, resultIndex) => {
         resultsHtml += this.formatXmlResult(
           xmlString,
-          index * xmlResults.length + resultIndex + 1,
+          actualResultCount + 1,
           documentId
         );
+        actualResultCount++;
       });
     });
 
     resultsHtml += "</div>";
+
+    // If we have documents but no actual results, show a helpful message
+    if (actualResultCount === 0 && data.length > 0) {
+      outputContainer.innerHTML = `
+        <div style="padding: 2rem; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+          <div style="font-size: 1.25rem; font-weight: 500; color: #fbbf24;">Query Matched Documents But Returned No Results</div>
+          <div style="margin-top: 0.5rem; color: var(--text-muted, #94a3b8);">
+            The XPath query was executed on ${data.length} document(s), but no matching nodes were found.
+            <br><br>
+            This could mean:
+            <ul style="text-align: left; margin: 1rem auto; max-width: 500px;">
+              <li>The XPath expression is valid but matches no data</li>
+              <li>The namespace prefix 'col:' might need to be adjusted</li>
+              <li>The XML structure might be different than expected</li>
+            </ul>
+            Try viewing a sample document structure or simplify your query.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
     outputContainer.innerHTML = resultsHtml;
   },
 

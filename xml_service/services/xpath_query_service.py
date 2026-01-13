@@ -26,7 +26,7 @@ class XPathQueryService:
             document_id: Optional specific document ID
             
         Returns:
-            List of results
+            List of results with non-empty result arrays only
         """
         if document_id:
             query = f"""
@@ -35,7 +35,7 @@ class XPathQueryService:
                 FROM collision_documents
                 WHERE id = %s AND status = 'VALID'
             """
-            return db_manager.execute_query(query, (xpath_expression, document_id))
+            results = db_manager.execute_query(query, (xpath_expression, document_id))
         else:
             query = f"""
                 SELECT id as document_id,
@@ -43,7 +43,13 @@ class XPathQueryService:
                 FROM collision_documents
                 WHERE status = 'VALID'
             """
-            return db_manager.execute_query(query, (xpath_expression,))
+            results = db_manager.execute_query(query, (xpath_expression,))
+        
+        # Filter out documents with empty result arrays to avoid showing false positives
+        filtered_results = [r for r in results if r.get('result') and len(r.get('result', [])) > 0]
+        print(f"[XPathService] Query returned {len(results)} documents, {len(filtered_results)} with actual results")
+        
+        return filtered_results
     
     # ============================================================
     # COMPLEX QUERY 1: Casualties by Weather Condition
